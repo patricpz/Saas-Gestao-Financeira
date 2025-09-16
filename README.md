@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sistema de Gestão Financeira Pessoal
 
-## Getting Started
+Aplicação web para gerenciamento financeiro pessoal com autenticação, dashboard e relatórios.
 
-First, run the development server:
+## 🚀 Funcionalidades
+
+- ✅ Autenticação de usuários
+- 📊 Dashboard financeiro com saldo atual
+- 💰 CRUD de transações (entradas e saídas)
+- 🏷️ Categorias personalizáveis
+- 📈 Gráficos de entradas vs saídas
+- 📤 Exportação de dados (CSV/Excel)
+
+## 🛠️ Tecnologias
+
+- **Frontend**: Next.js 14 com App Router
+- **Estilização**: Tailwind CSS + Shadcn/UI
+- **Autenticação**: NextAuth.js
+- **Banco de Dados**: PostgreSQL com Prisma ORM
+- **Gráficos**: Recharts
+- **Validação**: Zod + React Hook Form
+
+## 🚀 Começando
+
+### Pré-requisitos
+
+- Node.js 18+
+- PostgreSQL
+- pnpm (recomendado) ou npm/yarn
+
+### Configuração do Ambiente
+
+1. Clone o repositório
+2. Instale as dependências:
+   ```bash
+   pnpm install
+   # ou
+   npm install
+   ```
+3. Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
+   ```env
+   DATABASE_URL="postgresql://user:password@localhost:5432/finance_app?schema=public"
+   NEXTAUTH_SECRET="seu-segredo-seguro-aqui"
+   NEXTAUTH_URL="http://localhost:3000"
+   ```
+
+### Configuração do Banco de Dados
+
+1. Crie um banco de dados PostgreSQL chamado `finance_app`
+2. Execute as migrações do Prisma:
+   ```bash
+   npx prisma migrate dev --name init
+   ```
+3. (Opcional) Popule o banco com dados iniciais:
+   ```bash
+   npx prisma db seed
+   ```
+
+### Executando o Projeto
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Modo desenvolvimento
 pnpm dev
-# or
-bun dev
+# ou
+npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse [http://localhost:3000](http://localhost:3000) no seu navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🏗️ Estrutura do Projeto
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+my-app/
+├── app/                    # Rotas da aplicação
+├── components/             # Componentes reutilizáveis
+│   └── ui/                 # Componentes Shadcn/UI
+├── lib/                    # Utilitários e configurações
+│   └── prisma.ts           # Cliente do Prisma
+├── prisma/                 # Schema e migrações do Prisma
+│   └── schema.prisma       # Modelos do banco de dados
+└── public/                 # Arquivos estáticos
+```
 
-## Learn More
+## 📦 Dependências Principais
 
-To learn more about Next.js, take a look at the following resources:
+- `next`: Framework React
+- `@prisma/client`: ORM para banco de dados
+- `@radix-ui/react-*`: Componentes UI acessíveis
+- `class-variance-authority`: Gerenciamento de variantes de componentes
+- `date-fns`: Manipulação de datas
+- `lucide-react`: Ícones
+- `next-auth`: Autenticação
+- `react-hook-form`: Gerenciamento de formulários
+- `recharts`: Gráficos interativos
+- `sonner`: Notificações
+- `tailwind-merge`: Utilitários para Tailwind CSS
+- `zod`: Validação de esquemas
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📄 Licença
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
 
-## Deploy on Vercel
+## 🙌 Contribuição
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Contribuições são bem-vindas! Sinta-se à vontade para abrir issues e enviar pull requests.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📞 Suporte
+
+Para suporte, abra uma issue no repositório ou entre em contato com a equipe de desenvolvimento.
+# Saas-Gestao-Financeira
