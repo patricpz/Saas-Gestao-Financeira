@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, ArrowUp, ArrowDown, Wallet } from 'lucide-react';
 import Link from 'next/link';
+import TransactionModal from '../transactions/new/page';
 
 export default function DashboardPage() {
   // Mock data - replace with actual data from your API
@@ -18,12 +19,14 @@ export default function DashboardPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <Button asChild>
+
+        <TransactionModal />
+        {/* <Button asChild>
           <Link href="/transactions/new" className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Nova Transação
           </Link>
-        </Button>
+        </Button> */}
       </div>
 
       {/* Balance Cards */}
@@ -86,11 +89,11 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
-            <div className="text-center mt-4">
+            {/* <div className="text-center mt-4">
               <Button variant="link" asChild>
                 <Link href="/transactions">Ver todas as transações</Link>
               </Button>
-            </div>
+            </div> */}
           </div>
         </CardContent>
       </Card>
