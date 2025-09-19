@@ -127,7 +127,8 @@ export default function TransactionModal() {
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   type="button"
-                  variant={selectedType === "expense" ? "destructive" : "outline"}
+                  variant={"outline"}
+                  className={cn(selectedType === "expense" ? "bg-red-500 text-white" : "")}
                   onClick={() => {
                     setSelectedType("expense");
                     setValue("type", "expense");
@@ -137,7 +138,8 @@ export default function TransactionModal() {
                 </Button>
                 <Button
                   type="button"
-                  variant={selectedType === "income" ? "default" : "outline"}
+                  variant={"outline"}
+                  className={cn(selectedType === "income" ? "bg-green-500 text-white" : "")}
                   onClick={() => {
                     setSelectedType("income");
                     setValue("type", "income");
