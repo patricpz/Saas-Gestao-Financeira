@@ -20,10 +20,11 @@ export default function HeaderBar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
 
-
+ 
     return (
-        <header className="w-full bg-white dark:bg-zinc-900 shadow-md py-3 px-4 sm:py-4 sm:px-6">
-            <div className="flex items-center justify-between">
+        <header className="w-screen bg-white dark:bg-zinc-900 shadow-md">
+            <div className="max-w-[1400px] mx-auto w-full px-4 py-3 sm:px-6 sm:py-4">
+                <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <Link href="/" className="flex items-center">
                     <DollarSign className="h-10 w-10 sm:h-12 sm:w-12" />
@@ -172,6 +173,7 @@ export default function HeaderBar() {
                         </div>
 
                     </div>
+                </div>
                 </div>
             </div>
         </header>
