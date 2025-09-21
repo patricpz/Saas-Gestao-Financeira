@@ -30,7 +30,9 @@ export default function DashboardPage() {
           <div className="flex gap-2">
             <TransactionModal />
             <Button variant="outline">
-              Relatório
+              <Link href="/dashboard/reports">
+                Relatório
+              </Link>
             </Button>
           </div>
         </div>

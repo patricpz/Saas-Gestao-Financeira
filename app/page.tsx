@@ -29,7 +29,7 @@ export default function Home() {
     },
     { 
       title: 'Transações', 
-      href: '/transactions',
+      href: '/dashboard/transactions',
       description: 'Visualize e gerencie todas as suas transações',
       icon: <List className="w-6 h-6" />,
       variant: 'default' as const

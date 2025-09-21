@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -14,10 +15,21 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { UserIcon, SettingsIcon, LogOutIcon, ChevronDownIcon, Shield, Menu, X, DollarSign } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function HeaderBar() {
-    const [userRole, setUserRole] = useState<string | null>(null);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { user, signOut } = useAuth();
+    const router = useRouter();
+
+    const handleSignOut = async () => {
+        try {
+            await signOut();
+            router.push('/login');
+        } catch (error) {
+            console.error('Erro ao sair:', error);
+        }
+    };
 
 
  
@@ -40,52 +52,70 @@ export default function HeaderBar() {
                 </div>
 
                 <nav className="hidden sm:flex gap-4 md:gap-6 items-center">
-                    <Link href="/" className="hover:underline">Início</Link>
-                    <Link href="/articles" className="hover:underline">Artigos</Link>
+                    <Link href="/dashboard" className="hover:underline">Dashboard</Link>
+                    <Link href="/dashboard/transactions" className="hover:underline">Lançamentos</Link>
 
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="relative h-8 w-auto justify-start rounded-full p-0">
-                                <span className="text-sm font-medium">Patric</span>
-
-                                <Avatar className="h-8 w-8 mr-2">
-                                    <AvatarImage src="https://github.com/shadcn.png" />
-                                    <AvatarFallback className="text-xs">
-                                        PA
-                                    </AvatarFallback>
-                                </Avatar>
+                                {user ? (
+                                    <div className="flex items-center gap-2">
+                                        <Avatar className="h-8 w-8 mr-2">
+                                            <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email || 'Usuário'} />
+                                            <AvatarFallback>
+                                                {user.email?.charAt(0).toUpperCase() || 'U'}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-sm font-medium">
+                                            {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuário'}
+                                        </span>
+                                        <ChevronDownIcon className="ml-1 h-4 w-4" />
+                                    </div>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <Button asChild variant="outline" size="sm">
+                                            <Link href="/login">Entrar</Link>
+                                        </Button>
+                                        <Button asChild size="sm">
+                                            <Link href="/register">Criar conta</Link>
+                                        </Button>
+                                    </div>
+                                )}
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-56" align="end" forceMount>
-                            <DropdownMenuLabel className="font-normal">
-                                <div className="flex flex-col space-y-1">
-                                    <p className="text-sm font-medium leading-none">Patric</p>
-                                    <p className="text-xs leading-none text-muted-foreground">
-                                        email@email.com
-                                    </p>
-
-                                </div>
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem asChild>
-                                <Link href="/dashboard/profile" className="flex items-center">
-                                    <UserIcon className="mr-2 h-4 w-4" />
-                                    <span>Meu Perfil</span>
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href="/dashboard/profile" className="flex items-center">
-                                    <SettingsIcon className="mr-2 h-4 w-4" />
-                                    <span>Configurações</span>
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600 focus:text-red-600">
-                                <LogOutIcon className="mr-2 h-4 w-4" />
-                                <span>Sair</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
+                        {user && (
+                            <DropdownMenuContent className="w-56" align="end" forceMount>
+                                <DropdownMenuLabel className="font-normal">
+                                    <div className="flex flex-col space-y-1">
+                                        <p className="text-sm font-medium leading-none">
+                                            {user.user_metadata?.full_name || 'Usuário'}
+                                        </p>
+                                        <p className="text-xs leading-none text-muted-foreground">
+                                            {user.email}
+                                        </p>
+                                    </div>
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem asChild>
+                                    <Link href="/dashboard/profile">
+                                        <UserIcon className="mr-2 h-4 w-4" />
+                                        <span>Perfil</span>
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/dashboard/settings">
+                                        <SettingsIcon className="mr-2 h-4 w-4" />
+                                        <span>Configurações</span>
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                                    <LogOutIcon className="mr-2 h-4 w-4" />
+                                    <span>Sair</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        )}
                     </DropdownMenu>
                 </nav>
 
@@ -110,18 +140,18 @@ export default function HeaderBar() {
                 <div className="px-4">
                     <div className="pt-2 space-y-2">
                         <Link
-                            href="/"
+                            href="/dashboard"
                             className="block px-3 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                             onClick={() => setIsMobileMenuOpen(false)}
                         >
-                            Início
+                            Dashboard
                         </Link>
                         <Link
-                            href="/articles"
+                            href="/dashboard/transactions"
                             className="block px-3 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                             onClick={() => setIsMobileMenuOpen(false)}
                         >
-                            Artigos
+                            Lançamentos
                         </Link>
 
                         <div className="border-t border-gray-200 dark:border-gray-700 my-3" />
@@ -135,11 +165,11 @@ export default function HeaderBar() {
                                 <div className="min-w-0 flex-1">
                                     <p className="text-sm font-medium truncate">Patric</p>
                                     <p className="text-xs text-muted-foreground truncate">email@email.com</p>
-                                    {userRole && (
+                                    {/* {userRole && (
                                         <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
                                             {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
                                         </span>
-                                    )}
+                                    )} */}
                                 </div>
                             </div>
 

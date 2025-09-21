@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm, SubmitHandler } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
-import { Mail, Lock, Loader2 } from 'lucide-react';
+import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido').min(1, 'O e-mail é obrigatório'),
@@ -21,6 +24,9 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const { signIn } = useAuth();
   
   const {
     register,
@@ -35,36 +41,59 @@ export default function LoginPage() {
     },
   });
 
-  const onSubmit: SubmitHandler<LoginFormData> = async (data) => {
+  const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
+    setError(null);
+    
     try {
-      // TODO: Implement login logic
-      console.log(data);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      // Redirect to dashboard on success
-      window.location.href = '/dashboard';
-    } catch (error) {
-      console.error('Login failed:', error);
+      console.log('Tentando fazer login com:', data.email);
+      const { error, data: authData } = await signIn(data.email, data.password);
+      
+      console.log('Resultado do login:', { error, authData });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Se chegou aqui, o login foi bem-sucedido
+      if (authData?.session) {
+        console.log('Login bem-sucedido, redirecionando para dashboard');
+        console.log('Dados da sessão:', authData.session);
+        
+        // Força um reload completo da página para garantir que o estado seja atualizado
+        window.location.href = '/dashboard';
+      } else {
+        console.log('Login sem sessão válida');
+        setError('Erro: Sessão não criada corretamente');
+      }
+    } catch (err: any) {
+      console.error('Erro no login:', err);
+      setError(err.message || 'Ocorreu um erro ao fazer login. Por favor, verifique suas credenciais e tente novamente.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-sm">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Acesse sua conta
-          </h2>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Entrar na conta</h1>
           <p className="mt-2 text-sm text-gray-600">
             Ou{' '}
-            <Link href="/register" className="font-medium text-primary hover:text-primary/90">
-              crie uma nova conta
+            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
+              crie uma conta gratuita
             </Link>
           </p>
         </div>
+        
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erro</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
           <div className="rounded-md shadow-sm space-y-4">
