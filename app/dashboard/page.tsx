@@ -1,3 +1,5 @@
+'use client';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, ArrowUp, ArrowDown, Wallet } from 'lucide-react';
@@ -5,6 +7,7 @@ import Link from 'next/link';
 import HeaderBar from '@/components/HeaderBar';
 import TransactionModal from './transactions/new/page';
 import CardTranslation from '@/components/CardTranslation';
+import { useTransactions } from '@/hooks/mutations/useTransactions';
 
 export default function DashboardPage() {
   const balance = 12500.75;
@@ -15,6 +18,8 @@ export default function DashboardPage() {
     { id: 2, description: 'Mercado', amount: 350.5, type: 'expense', date: '2023-05-14' },
     { id: 3, description: 'Aluguel', amount: 1200.0, type: 'expense', date: '2023-05-10' },
   ];
+
+  const { data, isLoading, error } = useTransactions();
 
   return (
 

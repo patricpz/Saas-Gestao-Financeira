@@ -1,6 +1,9 @@
+'use client';
+
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { useAuth } from "@/context/AuthContext";
 
 export default function CardTranslation() {
 
@@ -12,6 +15,10 @@ export default function CardTranslation() {
         { id: 2, description: 'Mercado', amount: 350.5, type: 'expense', date: '2023-05-14' },
         { id: 3, description: 'Aluguel', amount: 1200.0, type: 'expense', date: '2023-05-10' },
     ];
+
+    const { user } = useAuth();
+
+    console.log('user', user)
 
     return (
         <Card>

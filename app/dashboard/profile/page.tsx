@@ -1,3 +1,5 @@
+'use client';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -5,16 +7,38 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Pencil, Save, Camera, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export default function ProfilePage() {
   // Mock user data - replace with actual data from your authentication provider
-  const user = {
-    name: 'João Silva',
-    email: 'joao@example.com',
-    phone: '(11) 98765-4321',
-    avatar: '/placeholder-avatar.jpg',
-    joinDate: 'Junho 2023',
+  // const user = {
+  //   name: 'João Silva',
+  //   email: 'joao@example.com',
+  //   phone: '(11) 98765-4321',
+  //   avatar: '/placeholder-avatar.jpg',
+  //   joinDate: 'Junho 2023',
+  // };
+
+  const { user } = useAuth();
+  const userData = {
+    name: user?.user_metadata?.full_name?.trim() || user?.email?.split('@')[0] || 'Usuário',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    avatar: user?.user_metadata?.avatar_url || '',
+    joinDate: user?.created_at 
+      ? new Date(user.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+      : ''
   };
+  
+  // Get user initials for avatar
+  const getInitials = (name: string) => {
+    if (!name) return 'U';
+    const names = name.split(' ');
+    if (names.length === 1) return names[0].charAt(0).toUpperCase();
+    return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`.toUpperCase();
+  };
+
+  
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -36,13 +60,10 @@ export default function ProfilePage() {
           <Card className="w-full">
             <CardContent className="flex flex-col items-center pt-6">
               <div className="relative group">
-                <Avatar className="h-32 w-32">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="text-3xl">
-                    {user.name
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')}
+                <Avatar className="h-32 w-32 text-3xl">
+                  <AvatarImage src={userData.avatar || undefined} alt={userData.name} />
+                  <AvatarFallback className="bg-primary/10">
+                    {getInitials(userData.name)}
                   </AvatarFallback>
                 </Avatar>
                 <label 
@@ -54,8 +75,10 @@ export default function ProfilePage() {
                 </label>
               </div>
               
-              <h3 className="mt-4 text-lg font-medium text-center">{user.name}</h3>
-              <p className="text-sm text-muted-foreground">Membro desde {user.joinDate}</p>
+              <h3 className="mt-4 text-lg font-medium text-center">{userData.name}</h3>
+              {userData.joinDate && (
+                <p className="text-sm text-muted-foreground">Membro desde {userData.joinDate}</p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -72,14 +95,14 @@ export default function ProfilePage() {
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome Completo</Label>
                     <div className="relative">
-                      <Input id="name" defaultValue={user.name} />
+                      <Input id="name" defaultValue={userData.name} />
                       <Pencil className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">E-mail</Label>
                     <div className="relative">
-                      <Input id="email" type="email" defaultValue={user.email} disabled />
+                      <Input id="email" type="email" defaultValue={userData.email} disabled />
                       <Pencil className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
@@ -89,7 +112,12 @@ export default function ProfilePage() {
                   <div className="space-y-2">
                     <Label htmlFor="phone">Telefone</Label>
                     <div className="relative">
-                      <Input id="phone" defaultValue={user.phone} />
+                      <Input 
+                        id="phone" 
+                        type="tel" 
+                        defaultValue={userData.phone} 
+                        placeholder={!userData.phone ? 'Adicione um telefone' : undefined}
+                      />
                       <Pencil className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
