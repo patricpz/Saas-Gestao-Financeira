@@ -72,50 +72,53 @@ export const POST = async (request: NextRequest) => {
   return handler(request, { params: {} });
 };
 
-export const DELETE = async (request: NextRequest, { params }: { params: { id: string } }) => {
-  const handler = createApiRouteHandler(
-    withAuth(async (req: NextRequest, _: any, { supabase, user }) => {
-      const { id } = params;
+// export const DELETE = async (
+//   request: NextRequest,
+//   { params }: { params: { id: string } }
+// ) => {
+//   const handler = createApiRouteHandler(
+//     withAuth(async (_req: NextRequest, _ctx: any, { supabase, user }) => {
+//       const { id } = params;
 
-      if (!id) {
-        return NextResponse.json(
-          { error: 'Transaction ID is required' },
-          { status: 400 }
-        );
-      }
+//       if (!id) {
+//         return NextResponse.json(
+//           { error: 'Transaction ID is required' },
+//           { status: 400 }
+//         );
+//       }
 
-      // Primeiro verifica se a transação pertence ao usuário
-      const { data: transaction, error: fetchError } = await supabase
-        .from('transactions')
-        .select('id')
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .single();
+//       // Verifica se a transação pertence ao usuário
+//       const { data: transaction, error: fetchError } = await supabase
+//         .from('transactions')
+//         .select('id')
+//         .eq('id', id)
+//         .eq('user_id', user.id)
+//         .single();
 
-      if (fetchError || !transaction) {
-        return NextResponse.json(
-          { error: 'Transaction not found or access denied' },
-          { status: 404 }
-        );
-      }
+//       if (fetchError || !transaction) {
+//         return NextResponse.json(
+//           { error: 'Transaction not found or access denied' },
+//           { status: 404 }
+//         );
+//       }
 
-      // Se chegou aqui, pode deletar
-      const { error: deleteError } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', id);
+//       // Se chegou aqui, pode deletar
+//       const { error: deleteError } = await supabase
+//         .from('transactions')
+//         .delete()
+//         .eq('id', id);
 
-      if (deleteError) {
-        console.error('Error deleting transaction:', deleteError);
-        return NextResponse.json(
-          { error: 'Failed to delete transaction' },
-          { status: 500 }
-        );
-      }
+//       if (deleteError) {
+//         console.error('Error deleting transaction:', deleteError);
+//         return NextResponse.json(
+//           { error: 'Failed to delete transaction' },
+//           { status: 500 }
+//         );
+//       }
 
-      return new NextResponse(null, { status: 204 });
-    })
-  );
+//       return new NextResponse(null, { status: 204 });
+//     })
+//   );
 
-  return handler(request, { params: { id: new URL(request.url).pathname.split('/').pop() || '' } });
-};
+//   return handler(request, { params });
+// };
