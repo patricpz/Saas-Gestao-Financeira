@@ -1,15 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import type { Database } from '@/types/supabase';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 type User = {
   id: string;
-  email?: string;
-  user_metadata?: {
-    full_name?: string;
-    avatar_url?: string;
-  };
+  email: string;
+  name?: string | null;
+  image?: string | null;
 };
 
 type HandlerContext = {
@@ -17,7 +14,6 @@ type HandlerContext = {
 };
 
 type HandlerExtra = {
-  supabase: ReturnType<typeof createRouteHandlerClient<Database>>;
   user: User;
 };
 
@@ -27,11 +23,10 @@ type Handler = (
   extra: HandlerExtra
 ) => Promise<NextResponse>;
 
-export const createApiRouteHandler = (handler: (req: NextRequest, context: HandlerContext, extra: HandlerExtra) => Promise<NextResponse>) => {
+export const createApiRouteHandler = (handler: Handler) => {
   return async (request: NextRequest, context: HandlerContext) => {
     try {
-      const supabase = createRouteHandlerClient<Database>({ cookies });
-      const { data: { session } } = await supabase.auth.getSession();
+      const session = await getServerSession(authOptions);
       
       if (!session?.user) {
         return NextResponse.json(
@@ -39,14 +34,15 @@ export const createApiRouteHandler = (handler: (req: NextRequest, context: Handl
           { status: 401 }
         );
       }
-      
+
       const user: User = {
         id: session.user.id,
-        email: session.user.email,
-        user_metadata: session.user.user_metadata
+        email: session.user.email!,
+        name: session.user.name,
+        image: session.user.image
       };
       
-      return await handler(request, context, { supabase, user });
+      return await handler(request, context, { user });
     } catch (error) {
       console.error('API Error:', error);
       return NextResponse.json(

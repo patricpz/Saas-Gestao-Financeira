@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,9 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
-import { Mail, Lock, User, Loader2, AlertCircle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import { Mail, Lock, User, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { signIn, useSession } from 'next-auth/react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const registerSchema = z.object({
@@ -30,12 +30,20 @@ const registerSchema = z.object({
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const router = useRouter();
-  const { signUp } = useAuth();
-  
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  const { data: session, status } = useSession();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.push(callbackUrl);
+    }
+  }, [status, callbackUrl, router]);
+
   const {
     register,
     handleSubmit,
@@ -43,6 +51,7 @@ export default function RegisterPage() {
     setError: setFormError,
     setValue,
     watch,
+    formState: { isSubmitting },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -53,45 +62,65 @@ export default function RegisterPage() {
       terms: false,
     },
   });
-  
+
   const termsChecked = watch('terms');
+  const isLoading = isSubmitting;
 
   const onSubmit = async (data: RegisterFormData) => {
-    if (data.password !== data.confirmPassword) {
-      setFormError('confirmPassword', {
-        type: 'manual',
-        message: 'As senhas não conferem',
-      });
-      return;
-    }
-
-    setIsLoading(true);
     setError(null);
 
     try {
-      const { error } = await signUp(data.email, data.password, data.name);
-      
-      if (error) {
-        if (error.message === 'Email not confirmed') {
-          setError('Por favor, verifique seu e-mail para confirmar sua conta antes de fazer login.');
-        } else {
-          setError(error.message || 'Ocorreu um erro ao criar sua conta. Por favor, tente novamente.');
-        }
-        return;
+      // Call the registration API endpoint
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          password: data.password,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Falha ao criar conta. Tente novamente.');
       }
-      
-      // Se chegou aqui, o cadastro foi bem-sucedido
+
+      // Registration successful, now sign in the user
       setSuccess(true);
+
+      // Auto-login after successful registration
+      const result = await signIn('credentials', {
+        redirect: false,
+        email: data.email,
+        password: data.password,
+        callbackUrl,
+      });
+
+      if (result?.error) {
+        // If auto-login fails, redirect to login page with success message
+        router.push(`/login?registered=true`);
+      } else if (result?.url) {
+        // Redirect to the callback URL or dashboard
+        router.push(result.url);
+      } else {
+        router.push(callbackUrl);
+      }
+    } catch (error) {
+      console.error('Erro no cadastro:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro ao criar a conta';
+      setError(errorMessage);
       
-      // Redireciona para o dashboard após 2 segundos
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 2000);
-    } catch (err) {
-      console.error('Erro no cadastro:', err);
-      setError('Ocorreu um erro inesperado. Por favor, tente novamente.');
-    } finally {
-      setIsLoading(false);
+      // Set form error for better UX
+      if (errorMessage.includes('email')) {
+        setFormError('email', { type: 'manual', message: errorMessage });
+      } else if (errorMessage.includes('senha')) {
+        setFormError('password', { type: 'manual', message: errorMessage });
+      } else {
+        setFormError('root', { type: 'manual', message: errorMessage });
+      }
     }
   };
 
@@ -114,8 +143,13 @@ export default function RegisterPage() {
               />
             </svg>
           </div>
-          <h2 className="mt-6 text-2xl font-bold text-gray-900">Conta criada com sucesso!</h2>
-          <p className="text-gray-600">Você será redirecionado para o painel em instantes...</p>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Conta criada com sucesso!</h1>
+          <p className="mt-4 text-sm text-gray-600">
+            Por favor, verifique seu e-mail para confirmar sua conta antes de fazer login.
+          </p>
+          <p className="mt-2 text-sm text-gray-600">
+            Você será redirecionado para a página de login em instantes...
+          </p>
         </div>
       </div>
     );

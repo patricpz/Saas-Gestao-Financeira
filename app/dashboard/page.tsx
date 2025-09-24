@@ -1,25 +1,63 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, ArrowUp, ArrowDown, Wallet } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
 import HeaderBar from '@/components/HeaderBar';
-import TransactionModal from './transactions/new/page';
 import CardTranslation from '@/components/CardTranslation';
-import { useTransactions } from '@/hooks/mutations/useTransactions';
+import { useTransactions, type Transaction as TransactionType } from '@/hooks/mutations/useTransactions';
+import { TransactionModal } from '@/components/TransactionModal';
 
 export default function DashboardPage() {
-  const balance = 12500.75;
-  const income = 15000.0;
-  const expenses = 2499.25;
-  const recentTransactions = [
-    { id: 1, description: 'Salário', amount: 5000.0, type: 'income', date: '2023-05-15' },
-    { id: 2, description: 'Mercado', amount: 350.5, type: 'expense', date: '2023-05-14' },
-    { id: 3, description: 'Aluguel', amount: 1200.0, type: 'expense', date: '2023-05-10' },
-  ];
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [balance, setBalance] = useState(0);
+  const [income, setIncome] = useState(0);
+  const [expenses, setExpenses] = useState(0);
+  const [recentTransactions, setRecentTransactions] = useState<TransactionType[]>([]);
+  const router = useRouter();
+  
+  // Use the useAuth hook to check authentication status
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, isAuthLoading, router]);
 
-  const { data, isLoading, error } = useTransactions();
+  const { data: transactionsData, isLoading, error } = useTransactions();
+
+  // Update state when transactions data is loaded
+  useEffect(() => {
+    if (transactionsData) {
+      // Calculate balance, income, and expenses from transactions
+      const transactions = transactionsData as TransactionType[];
+      
+      const calculatedIncome = transactions
+        .filter((t) => t.type === 'INCOME')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+      
+      const calculatedExpenses = transactions
+        .filter((t) => t.type === 'EXPENSE')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+      
+      setIncome(calculatedIncome);
+      setExpenses(calculatedExpenses);
+      setBalance(calculatedIncome - calculatedExpenses);
+      
+      // Get recent transactions (last 5)
+      const sortedTransactions = [...transactions]
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 5);
+      
+      setRecentTransactions(sortedTransactions);
+    }
+  }, [transactionsData]);
 
   return (
 
@@ -33,13 +71,21 @@ export default function DashboardPage() {
 
           {/* Ações */}
           <div className="flex gap-2">
-            <TransactionModal />
-            <Button variant="outline">
+            <Button onClick={() => setIsModalOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Nova Transação</span>
+            </Button>
+            <Button variant="outline" asChild>
               <Link href="/dashboard/reports">
                 Relatório
               </Link>
             </Button>
           </div>
+          
+          <TransactionModal 
+            open={isModalOpen} 
+            onOpenChange={setIsModalOpen} 
+          />
         </div>
 
 

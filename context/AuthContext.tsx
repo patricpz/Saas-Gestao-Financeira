@@ -2,18 +2,34 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Session, User } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase'
+import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, getSession } from 'next-auth/react'
+
+interface User {
+  id: string
+  email: string
+  name?: string | null
+  image?: string | null
+  accessToken?: string
+}
+
+interface Session {
+  user: User
+  expires: string
+  accessToken?: string
+}
 
 type AuthContextType = {
   user: User | null
   session: Session | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ 
-    data: { session: Session | null; user: User | null } | null; 
-    error: any 
+    ok: boolean
+    error?: string 
   }>
-  signUp: (email: string, password: string, name: string) => Promise<{ error: any }>
+  signUp: (email: string, password: string, name: string) => Promise<{ 
+    ok: boolean
+    error?: string 
+  }>
   signOut: () => Promise<void>
 }
 
@@ -26,53 +42,91 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    // Monitorar mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session)
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    // Check authentication status on mount
+    const checkAuth = async () => {
+      try {
+        const session = await getSession()
+        if (session?.user) {
+          setSession(session as any)
+          setUser({
+            id: session.user.id,
+            email: session.user.email!,
+            name: session.user.name,
+            image: session.user.image
+          })
+        } else {
+          setSession(null)
+          setUser(null)
+        }
+      } catch (error) {
+        console.error('Error checking auth status:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-    return () => subscription.unsubscribe()
+    checkAuth()
   }, [])
 
-  // Remove automatic redirect to prevent loops
-  // The middleware will handle route protection
-
   const signIn = async (email: string, password: string) => {
-    console.log('AuthContext - Iniciando login para:', email)
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    
-    console.log('AuthContext - Resultado do login:', { data, error })
-    
-    if (data?.session) {
-      console.log('AuthContext - Sessão criada, atualizando estado')
-      setSession(data.session)
-      setUser(data.session.user)
+    try {
+      const result = await nextAuthSignIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      })
+
+      if (result?.error) {
+        return { ok: false, error: result.error }
+      }
+
+      // Get the updated session
+      const session = await getSession()
+      if (session?.user) {
+        setSession(session as any)
+        setUser({
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.name,
+          image: session.user.image,
+          accessToken: (session as any).accessToken || (session.user as any).accessToken,
+        })
+      }
+
+      return { ok: true }
+    } catch (error) {
+      console.error('Sign in error:', error)
+      return { ok: false, error: 'Erro ao fazer login. Tente novamente.' }
     }
-    
-    return { data, error }
   }
 
   const signUp = async (email: string, password: string, name: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: name,
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      },
-    })
-    return { data, error }
+        body: JSON.stringify({ email, password, name }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        return { ok: false, error: data.error || 'Registration failed' }
+      }
+
+      return { ok: true }
+    } catch (error) {
+      console.error('Sign up error:', error)
+      return { ok: false, error: 'An unexpected error occurred' }
+    }
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    await nextAuthSignOut({ redirect: false })
+    setSession(null)
+    setUser(null)
     router.push('/login')
   }
 

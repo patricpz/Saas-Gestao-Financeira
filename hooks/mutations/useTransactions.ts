@@ -1,64 +1,89 @@
-"use client";
+'use client';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import axios, { type AxiosError } from "axios";
+import { useAuth } from "../useAuth";
 
-interface Transaction {
-  id?: string;
+// Configuração base do axios
+const api = axios.create({
+  baseURL: '/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+type TransactionType = 'INCOME' | 'EXPENSE';
+
+export interface Transaction {
+  id: string;
   amount: number;
   description: string;
-  type: 'income' | 'expense';
+  type: TransactionType;
   category: string;
-  date?: string;
-  created_at?: string;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
 }
 
 export function useTransactions(limit = 20) {
+  const { accessToken, isAuthenticated } = useAuth();
+
   return useQuery<Transaction[]>({
     queryKey: ["transactions", limit],
     queryFn: async () => {
-      const res = await fetch(`/api/transactions?limit=${limit}`, {
-        credentials: "include",
+      if (!isAuthenticated || !accessToken) {
+        throw new Error('Authentication required');
+      }
+      
+      const { data } = await api.get<Transaction[]>('/transactions', {
+        params: { limit },
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
       
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}));
-        throw new Error(error.message || "Erro ao carregar transações");
-      }
-      
-      return res.json();
+      return data.map(transaction => ({
+        ...transaction,
+        date: new Date(transaction.date).toISOString().split('T')[0],
+      }));
     },
+    enabled: isAuthenticated && !!accessToken,
   });
+}
+
+interface CreateTransactionInput {
+  amount: number;
+  description: string;
+  type: TransactionType;
+  category: string;
+  date: string;
 }
 
 export function useCreateTransaction() {
   const queryClient = useQueryClient();
+  const { accessToken, isAuthenticated } = useAuth();
 
-  return useMutation<Transaction, Error, Omit<Transaction, 'id' | 'created_at'>>({
+  return useMutation<Transaction, AxiosError, CreateTransactionInput>({
     mutationFn: async (transaction) => {
-      const res = await fetch("/api/transactions", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(transaction),
-      });
-
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}));
-        throw new Error(error.message || "Erro ao criar transação");
+      if (!isAuthenticated || !accessToken) {
+        throw new Error('Authentication required');
       }
-
-      return res.json();
+      
+      const { data } = await api.post<Transaction>('/transactions', transaction, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+      return data;
     },
     onSuccess: () => {
       // Invalida todas as queries que começam com 'transactions'
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
     },
-    onError: (error) => {
-      console.error("Erro na mutação:", error);
+    onError: (error: AxiosError) => {
+      console.error("Erro ao criar transação:", error.response?.data || error.message);
+      throw error;
     },
   });
 }
@@ -66,21 +91,27 @@ export function useCreateTransaction() {
 // Hook para deletar transação
 export function useDeleteTransaction() {
   const queryClient = useQueryClient();
+  const { accessToken, isAuthenticated } = useAuth();
 
-  return useMutation<void, Error, string>({
+  return useMutation<void, AxiosError, string>({
     mutationFn: async (transactionId) => {
-      const res = await fetch(`/api/transactions/${transactionId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}));
-        throw new Error(error.message || "Erro ao deletar transação");
+      if (!isAuthenticated || !accessToken) {
+        throw new Error('Authentication required');
       }
+      
+      await api.delete(`/transactions/${transactionId}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
     },
     onSuccess: () => {
+      // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
+    onError: (error) => {
+      console.error("Erro ao deletar transação:", error.response?.data || error.message);
+      throw error;
     },
   });
 }

@@ -19,17 +19,37 @@ const alertVariants = cva(
   }
 )
 
-const Alert = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>
->(({ className, variant, ...props }, ref) => (
-  <div
-    ref={ref}
-    role="alert"
-    className={cn(alertVariants({ variant }), className)}
-    {...props}
-  />
-))
+interface AlertProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof alertVariants> {
+  children?: React.ReactNode;
+  asChild?: boolean;
+}
+
+const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
+  ({ className, variant, children, asChild, ...props }, ref) => {
+    // Filter out any non-serializable props that might be passed to the DOM
+    const safeProps = { ...props };
+    
+    // Remove any non-serializable props that might cause issues
+    const { asChild: _, ...filteredProps } = safeProps as any;
+
+    return (
+      <div
+        ref={ref}
+        role="alert"
+        className={cn(alertVariants({ variant }), className)}
+        {...filteredProps}
+      >
+        {React.Children.map(children, (child) => {
+          // Ensure children are valid React elements
+          if (React.isValidElement(child)) {
+            return child;
+          }
+          return null;
+        })}
+      </div>
+    );
+  }
+)
 Alert.displayName = "Alert"
 
 const AlertTitle = React.forwardRef<

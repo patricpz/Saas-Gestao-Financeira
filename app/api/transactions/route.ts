@@ -1,124 +1,130 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createApiRouteHandler, withAuth } from '../_lib/route-utils';
-import type { Database } from '@/types/supabase';
+import { prisma } from '@/lib/prisma';
 
 export const GET = async (request: NextRequest) => {
-  const handler = createApiRouteHandler(
-    withAuth(async (req: NextRequest, _: any, { supabase, user }) => {
-      const { searchParams } = new URL(req.url);
-      const limit = searchParams.get('limit') || '10';
+  try {
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const userId = request.headers.get('x-user-id');
 
-      const { data: transactions, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
-        .limit(parseInt(limit));
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User not authenticated' },
+        { status: 401 }
+      );
+    }
 
-      if (error) {
-        console.error('Error fetching transactions:', error);
-        return NextResponse.json(
-          { error: 'Failed to fetch transactions' },
-          { status: 500 }
-        );
-      }
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        userId: userId,
+      },
+      orderBy: {
+        date: 'desc',
+      },
+      take: limit,
+      include: {
+        category: true,
+      },
+    });
 
-      return NextResponse.json(transactions);
-    })
-  );
-
-  return handler(request, { params: {} });
+    return NextResponse.json(transactions);
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch transactions' },
+      { status: 500 }
+    );
+  }
 };
 
 export const POST = async (request: NextRequest) => {
-  const handler = createApiRouteHandler(
-    withAuth(async (req: NextRequest, _: any, { supabase, user }) => {
-      const { amount, description, type, category, date } = await req.json();
+  try {
+    const { amount, description, type, categoryId, date } = await request.json();
+    const userId = request.headers.get('x-user-id');
 
-      if (!amount || !description || !type || !category) {
-        return NextResponse.json(
-          { error: 'Missing required fields' },
-          { status: 400 }
-        );
-      }
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User not authenticated' },
+        { status: 401 }
+      );
+    }
 
-      const { data: transaction, error } = await supabase
-        .from('transactions')
-        .insert([
-          {
-            user_id: user.id,
-            amount,
-            description,
-            type,
-            category,
-            date: date || new Date().toISOString(),
-          },
-        ])
-        .select()
-        .single();
+    if (!amount || !description || !type || !categoryId) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
 
-      if (error) {
-        console.error('Error creating transaction:', error);
-        return NextResponse.json(
-          { error: 'Failed to create transaction' },
-          { status: 500 }
-        );
-      }
+    const transaction = await prisma.transaction.create({
+      data: {
+        amount,
+        description,
+        type,
+        date: date ? new Date(date) : new Date(),
+        userId,
+        categoryId,
+      },
+      include: {
+        category: true,
+      },
+    });
 
-      return NextResponse.json(transaction, { status: 201 });
-    })
-  );
-
-  return handler(request, { params: {} });
+    return NextResponse.json(transaction, { status: 201 });
+  } catch (error) {
+    console.error('Error creating transaction:', error);
+    return NextResponse.json(
+      { error: 'Failed to create transaction' },
+      { status: 500 }
+    );
+  }
 };
 
-// export const DELETE = async (
-//   request: NextRequest,
-//   { params }: { params: { id: string } }
-// ) => {
-//   const handler = createApiRouteHandler(
-//     withAuth(async (_req: NextRequest, _ctx: any, { supabase, user }) => {
-//       const { id } = params;
+export const DELETE = async (
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) => {
+  try {
+    const userId = request.headers.get('x-user-id');
+    const { id } = params;
 
-//       if (!id) {
-//         return NextResponse.json(
-//           { error: 'Transaction ID is required' },
-//           { status: 400 }
-//         );
-//       }
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User not authenticated' },
+        { status: 401 }
+      );
+    }
 
-//       // Verifica se a transação pertence ao usuário
-//       const { data: transaction, error: fetchError } = await supabase
-//         .from('transactions')
-//         .select('id')
-//         .eq('id', id)
-//         .eq('user_id', user.id)
-//         .single();
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Transaction ID is required' },
+        { status: 400 }
+      );
+    }
 
-//       if (fetchError || !transaction) {
-//         return NextResponse.json(
-//           { error: 'Transaction not found or access denied' },
-//           { status: 404 }
-//         );
-//       }
+    // Verifica se a transação pertence ao usuário
+    const transaction = await prisma.transaction.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
 
-//       // Se chegou aqui, pode deletar
-//       const { error: deleteError } = await supabase
-//         .from('transactions')
-//         .delete()
-//         .eq('id', id);
+    if (!transaction || transaction.userId !== userId) {
+      return NextResponse.json(
+        { error: 'Transaction not found or access denied' },
+        { status: 404 }
+      );
+    }
 
-//       if (deleteError) {
-//         console.error('Error deleting transaction:', deleteError);
-//         return NextResponse.json(
-//           { error: 'Failed to delete transaction' },
-//           { status: 500 }
-//         );
-//       }
+    await prisma.transaction.delete({
+      where: { id },
+    });
 
-//       return new NextResponse(null, { status: 204 });
-//     })
-//   );
-
-//   return handler(request, { params });
-// };
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    console.error('Error deleting transaction:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete transaction' },
+      { status: 500 }
+    );
+  }
+};

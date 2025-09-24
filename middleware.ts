@@ -1,130 +1,122 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 
-const protectedRoutes = ['/dashboard']
-const publicRoutes = ['/login', '/register', '/']
+// Define protected routes that require authentication
+const protectedRoutes = [
+  '/dashboard',
+  '/transactions',
+  '/profile',
+  '/reports',
+  '/settings'
+]
+
+// Define public routes that should not be accessible when authenticated
+const publicRoutes = [
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/',
+  '/api/auth/signin',
+  '/api/auth/error',
+  '/api/auth/signout',
+  '/api/auth/csrf',
+  '/api/auth/providers',
+  '/api/auth/session',
+  '/api/auth/callback/credentials',
+  '/api/auth/register'
+]
+
+// Allow specific API routes without authentication
+const publicApiRoutes = [
+  '/api/auth/register',
+  '/api/health'
+]
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
-
-  // Cria o cliente Supabase
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-        },
-      },
-    }
-  )
-
-  // Obtém a sessão atual
-  console.log('=== MIDDLEWARE START ===')
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession()
   const { pathname } = request.nextUrl
+  const token = await getToken({ 
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET
+  })
   
-  console.log('Path:', pathname)
-  console.log('Has session:', !!session)
-  if (sessionError) console.error('Session error:', sessionError)
-  if (session) console.log('Session user:', session.user?.email)
+  // Allow API routes to be accessed without authentication
+  if (pathname.startsWith('/api/')) {
+    // Check if the API route is in the public list
+    const isPublicApiRoute = publicApiRoutes.some(route => pathname.startsWith(route))
+    if (isPublicApiRoute) {
+      return NextResponse.next()
+    }
+    
+    // For protected API routes, check for authentication
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Add user ID to request headers for API routes
+    const requestHeaders = new Headers(request.headers)
+    if (token.sub) {
+      requestHeaders.set('x-user-id', token.sub)
+    }
+    
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
+  }
 
-  // Se a rota for a raiz, redireciona para o dashboard se autenticado
+  // Handle root path
   if (pathname === '/') {
-    if (session) {
-      console.log('Root path with session, redirecting to /dashboard')
+    if (token) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
-    console.log('Root path, no session, allowing access')
     return NextResponse.next()
   }
 
-  // Verifica se a rota é protegida
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
-  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
+  // Check if the current route is protected
+  const isProtectedRoute = protectedRoutes.some(route => 
+    pathname.startsWith(route) || 
+    pathname === route
+  )
+  
+  // Check if the current route is public
+  const isPublicRoute = publicRoutes.some(route => 
+    pathname.startsWith(route) || 
+    pathname === route ||
+    pathname.startsWith('/_next/') ||
+    pathname.includes('.')
+  )
 
-  // Se for uma rota de API, permite o acesso
-  if (pathname.startsWith('/api/')) {
-    return response
+  // Redirect unauthenticated users trying to access protected routes
+  if (isProtectedRoute && !token) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('callbackUrl', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
-  // Se a rota for protegida e o usuário não estiver autenticado, redireciona para o login
-  if (isProtectedRoute) {
-    // Se não conseguiu carregar a sessão ainda, libera para o client resolver
-    if (session === null) {
-      console.log('Protected route, no session yet (allowing client to handle)')
-      return response
-    }
-  
-    if (!session?.user) {
-      console.log('Protected route, no valid user, redirecting to login')
-      const redirectUrl = new URL('/login', request.url)
-      redirectUrl.searchParams.set('redirectedFrom', pathname)
-      return NextResponse.redirect(redirectUrl)
-    }
-  
-    console.log('Protected route, valid session, allowing access')
-    return response
-  }
-  
-
-  // Se o usuário estiver autenticado e tentar acessar uma rota de login/register, redireciona para o dashboard
-  if ((pathname === '/login' || pathname === '/register') && session) {
-    console.log('Authenticated user trying to access auth page, redirecting to /dashboard')
+  // Redirect authenticated users away from public routes
+  if (isPublicRoute && token && !pathname.startsWith('/api/')) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  return response
+  return NextResponse.next()
 }
 
 export const config = {
   matcher: [
     /*
-     * Match all request paths except:
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+     * - public folder files (images, fonts, etc.)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff|woff2|ttf|eot|css|js)$).*)',
   ],
 }

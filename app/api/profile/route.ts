@@ -1,62 +1,72 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createApiRouteHandler, withAuth } from '../_lib/route-utils';
-import type { Database } from '@/types/supabase';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../auth/[...nextauth]/route';
+import { profileUtils } from '@/lib/profile-utils';
+
+interface ProfileData {
+  fullName?: string;
+  avatarUrl?: string;
+  currency?: string;
+}
 
 export const GET = async (request: NextRequest) => {
-  const handler = createApiRouteHandler(
-    withAuth(async (req: NextRequest, _: any, { supabase, user }) => {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'User not authenticated' },
+        { status: 401 }
+      );
+    }
 
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return NextResponse.json(
-          { error: 'Failed to fetch profile' },
-          { status: 500 }
-        );
-      }
+    const profile = await profileUtils.findByUserId(session.user.id);
 
-      return NextResponse.json(profile);
-    })
-  );
+    if (!profile) {
+      return NextResponse.json(
+        { error: 'Profile not found' },
+        { status: 404 }
+      );
+    }
 
-  return handler(request, { params: {} });
+    return NextResponse.json(profile);
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch profile' },
+      { status: 500 }
+    );
+  }
 };
 
 export const PATCH = async (request: NextRequest) => {
-  const handler = createApiRouteHandler(
-    withAuth(async (req: NextRequest, _: any, { supabase, user }) => {
-      const { full_name, avatar_url, currency } = await req.json();
+  try {
+    const session = await getServerSession(authOptions);
+    const { fullName, avatarUrl, currency } = await request.json();
 
-      const updates = {
-        id: user.id,
-        full_name,
-        avatar_url,
-        currency,
-        updated_at: new Date().toISOString(),
-      };
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'User not authenticated' },
+        { status: 401 }
+      );
+    }
 
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .upsert(updates)
-        .eq('id', user.id)
-        .select()
-        .single();
+    // Validate input data
+    const profileData: ProfileData = {
+      fullName: fullName || undefined,
+      avatarUrl: avatarUrl || undefined,
+      currency: currency || 'BRL'
+    };
 
-      if (error) {
-        console.error('Error updating profile:', error);
-        return NextResponse.json(
-          { error: 'Failed to update profile' },
-          { status: 500 }
-        );
-      }
+    // Use the profile utility to upsert the profile
+    const profile = await profileUtils.upsertByUserId(session.user.id, profileData);
 
-      return NextResponse.json(profile);
-    })
-  );
-
-  return handler(request, { params: {} });
+    return NextResponse.json(profile);
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    return NextResponse.json(
+      { error: 'Failed to update profile' },
+      { status: 500 }
+    );
+  }
 };

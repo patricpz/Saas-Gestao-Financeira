@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Plus, Filter, Download, EditIcon, TrashIcon, ArrowLeft, Loader2 } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/MediaQuery';
@@ -10,7 +10,9 @@ import HeaderBar from '@/components/HeaderBar';
 import { TransactionModal } from '@/components/TransactionModal';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface Category {
   id: string;
@@ -23,62 +25,69 @@ interface Transaction {
   description: string | null;
   date: string;
   type: 'INCOME' | 'EXPENSE';
-  category_id: string | null;
+  categoryId: string;
   category: {
     id: string;
     name: string;
   } | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function TransactionsPage() {
+  const router = useRouter();
+  const { userId, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Define the type for the raw data from Supabase
-  interface RawTransaction {
-    id: string;
-    amount: number;
-    description: string | null;
-    date: string;
-    type: 'INCOME' | 'EXPENSE';
-    category_id: string | null;
-    categories: Array<{ id: string; name: string }> | null;
-  }
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthLoading, isAuthenticated, router]);
 
   // Fetch transactions
   const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
     queryKey: ['transactions'],
     queryFn: async (): Promise<Transaction[]> => {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select(`
-          id,
-          amount,
-          description,
-          date,
-          type,
-          category_id,
-          categories (id, name)
-        `)
-        .order('date', { ascending: false });
+      if (!userId) return [];
       
-      if (error) throw error;
-      
-      // Transform the data to match our Transaction type
-      return (data || []).map((transaction: RawTransaction) => {
-        const category = transaction.categories?.[0] || null;
-        return {
-          id: transaction.id,
-          amount: transaction.amount,
-          description: transaction.description,
-          date: transaction.date,
-          type: transaction.type,
-          category_id: transaction.category_id,
-          category: category ? { id: category.id, name: category.name } : null
-        };
+      const response = await fetch('/api/transactions');
+      if (!response.ok) {
+        throw new Error('Failed to fetch transactions');
+      }
+      return response.json();
+    },
+    enabled: !!userId,
+  });
+
+  // Delete transaction mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/transactions/${id}`, {
+        method: 'DELETE',
       });
+      if (!response.ok) {
+        throw new Error('Failed to delete transaction');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      toast.success('Transação excluída com sucesso');
+    },
+    onError: () => {
+      toast.error('Erro ao excluir transação');
     },
   });
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem certeza que deseja excluir esta transação?')) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   // Calculate totals
   const totalIncome = transactions

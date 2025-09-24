@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,8 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { signIn, useSession } from 'next-auth/react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const loginSchema = z.object({
@@ -25,8 +25,37 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const router = useRouter();
-  const { signIn } = useAuth();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  const registered = searchParams.get('registered') === 'true';
+  const { data: session, status } = useSession();
+  
+  // Handle redirection after authentication
+  useEffect(() => {
+    if (status === 'authenticated' && session) {
+      // Ensure we have a valid session before redirecting
+      if (typeof window !== 'undefined') {
+        // Ensure we're not already on the callback URL to prevent loops
+        const targetUrl = new URL(callbackUrl, window.location.origin);
+        if (window.location.pathname !== targetUrl.pathname) {
+          router.push(targetUrl.toString());
+          router.refresh();
+        }
+      }
+    }
+  }, [status, session, callbackUrl, router]);
+
+  // Show success message if redirected from registration
+  useEffect(() => {
+    if (registered) {
+      setSuccess(true);
+      // Clear the success message after 5 seconds
+      const timer = setTimeout(() => setSuccess(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [registered]);
   
   const {
     register,
@@ -46,30 +75,22 @@ export default function LoginPage() {
     setError(null);
     
     try {
-      console.log('Tentando fazer login com:', data.email);
-      const { error, data: authData } = await signIn(data.email, data.password);
+      const result = await signIn('credentials', {
+        redirect: false,
+        email: data.email,
+        password: data.password,
+        callbackUrl,
+      });
       
-      console.log('Resultado do login:', { error, authData });
-      
-      if (error) {
-        throw error;
+      if (result?.error) {
+        throw new Error('Credenciais inválidas. Verifique seu e-mail e senha.');
       }
       
-      // Se chegou aqui, o login foi bem-sucedido
-      if (authData?.session) {
-        console.log('Login bem-sucedido, redirecionando para dashboard');
-        console.log('Dados da sessão:', authData.session);
-        
-        // Força um reload completo da página para garantir que o estado seja atualizado
-        window.location.href = '/dashboard';
-      } else {
-        console.log('Login sem sessão válida');
-        setError('Erro: Sessão não criada corretamente');
-      }
-    } catch (err: any) {
-      console.error('Erro no login:', err);
-      setError(err.message || 'Ocorreu um erro ao fazer login. Por favor, verifique suas credenciais e tente novamente.');
-    } finally {
+      // The signIn function will handle the redirect through the session callback
+      // No need for manual redirect here
+    } catch (error) {
+      console.error('Erro no login:', error);
+      setError(error instanceof Error ? error.message : 'Ocorreu um erro ao fazer login');
       setIsLoading(false);
     }
   };
@@ -77,6 +98,15 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8">
+        {success && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Conta criada com sucesso!</AlertTitle>
+            <AlertDescription>
+              Sua conta foi criada com sucesso. Por favor, faça login para continuar.
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Entrar na conta</h1>
           <p className="mt-2 text-sm text-gray-600">

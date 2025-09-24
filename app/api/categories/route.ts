@@ -1,70 +1,133 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createApiRouteHandler, withAuth } from '../_lib/route-utils';
-import type { Database } from '@/types/supabase';
+import { prisma } from '@/lib/prisma';
 
 // Rota para buscar categorias do usuário
 export const GET = async (request: NextRequest) => {
-  const handler = createApiRouteHandler(
-    withAuth(async (req: NextRequest, _: any, { supabase, user }) => {
-      const { data: categories, error } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name', { ascending: true });
+  try {
+    const userId = request.headers.get('x-user-id');
 
-      if (error) {
-        console.error('Error fetching categories:', error);
-        return NextResponse.json(
-          { error: 'Failed to fetch categories' },
-          { status: 500 }
-        );
-      }
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User not authenticated' },
+        { status: 401 }
+      );
+    }
 
-      return NextResponse.json(categories);
-    })
-  );
+    const categories = await prisma.category.findMany({
+      where: {
+        userId: userId,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
 
-  return handler(request, { params: {} });
+    return NextResponse.json(categories);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch categories' },
+      { status: 500 }
+    );
+  }
 };
 
 // Rota para criar uma nova categoria
 export const POST = async (request: NextRequest) => {
-  const handler = createApiRouteHandler(
-    withAuth(async (req: NextRequest, _: any, { supabase, user }) => {
-      const { name, type, color, icon } = await req.json();
+  try {
+    const { name, type } = await request.json();
+    const userId = request.headers.get('x-user-id');
 
-      if (!name || !type) {
-        return NextResponse.json(
-          { error: 'Name and type are required' },
-          { status: 400 }
-        );
-      }
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User not authenticated' },
+        { status: 401 }
+      );
+    }
 
-      const { data: category, error } = await supabase
-        .from('categories')
-        .insert([
-          {
-            user_id: user.id,
-            name,
-            type,
-            color: color || '#6b7280', // Cor padrão
-            icon: icon || 'dollar-sign',
-          },
-        ])
-        .select()
-        .single();
+    if (!name || !type) {
+      return NextResponse.json(
+        { error: 'Name and type are required' },
+        { status: 400 }
+      );
+    }
 
-      if (error) {
-        console.error('Error creating category:', error);
-        return NextResponse.json(
-          { error: 'Failed to create category' },
-          { status: 500 }
-        );
-      }
+    const category = await prisma.category.create({
+      data: {
+        name,
+        type,
+        userId,
+      },
+    });
 
-      return NextResponse.json(category, { status: 201 });
-    })
-  );
+    return NextResponse.json(category, { status: 201 });
+  } catch (error) {
+    console.error('Error creating category:', error);
+    return NextResponse.json(
+      { error: 'Failed to create category' },
+      { status: 500 }
+    );
+  }
+};
 
-  return handler(request, { params: {} });
+// Rota para deletar uma categoria
+export const DELETE = async (
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) => {
+  try {
+    const userId = request.headers.get('x-user-id');
+    const { id } = params;
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User not authenticated' },
+        { status: 401 }
+      );
+    }
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Category ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Verifica se a categoria pertence ao usuário
+    const category = await prisma.category.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+
+    if (!category || category.userId !== userId) {
+      return NextResponse.json(
+        { error: 'Category not found or access denied' },
+        { status: 404 }
+      );
+    }
+
+    // Verifica se há transações usando esta categoria
+    const transactionsCount = await prisma.transaction.count({
+      where: { categoryId: id },
+    });
+
+    if (transactionsCount > 0) {
+      return NextResponse.json(
+        { error: 'Cannot delete category with associated transactions' },
+        { status: 400 }
+      );
+    }
+
+    await prisma.category.delete({
+      where: { id },
+    });
+
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete category' },
+      { status: 500 }
+    );
+  }
 };
