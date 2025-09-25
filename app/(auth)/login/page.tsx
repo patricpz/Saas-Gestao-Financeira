@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signIn, useSession } from 'next-auth/react';
+import { signIn, useSession, getSession } from 'next-auth/react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const loginSchema = z.object({
@@ -32,20 +32,12 @@ export default function LoginPage() {
   const registered = searchParams.get('registered') === 'true';
   const { data: session, status } = useSession();
   
-  // Handle redirection after authentication
+  // Handle redirection if already authenticated
   useEffect(() => {
-    if (status === 'authenticated' && session) {
-      // Ensure we have a valid session before redirecting
-      if (typeof window !== 'undefined') {
-        // Ensure we're not already on the callback URL to prevent loops
-        const targetUrl = new URL(callbackUrl, window.location.origin);
-        if (window.location.pathname !== targetUrl.pathname) {
-          router.push(targetUrl.toString());
-          router.refresh();
-        }
-      }
+    if (status === 'authenticated') {
+      router.push(callbackUrl);
     }
-  }, [status, session, callbackUrl, router]);
+  }, [status, callbackUrl, router]);
 
   // Show success message if redirected from registration
   useEffect(() => {
@@ -86,8 +78,14 @@ export default function LoginPage() {
         throw new Error('Credenciais inválidas. Verifique seu e-mail e senha.');
       }
       
-      // The signIn function will handle the redirect through the session callback
-      // No need for manual redirect here
+      // If we have a callback URL, redirect to it
+      if (result?.url) {
+        router.push(result.url);
+        return;
+      }
+      
+      // Fallback redirect
+      router.push(callbackUrl);
     } catch (error) {
       console.error('Erro no login:', error);
       setError(error instanceof Error ? error.message : 'Ocorreu um erro ao fazer login');

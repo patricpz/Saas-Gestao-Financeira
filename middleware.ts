@@ -40,15 +40,23 @@ export async function middleware(request: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET
   })
   
-  // Allow API routes to be accessed without authentication
+  // 🔹 Tratar assets e arquivos estáticos separadamente
+  const isStaticAsset = 
+    pathname.startsWith('/_next/') || 
+    pathname.includes('.') || 
+    pathname.startsWith('/favicon.ico')
+
+  if (isStaticAsset) {
+    return NextResponse.next()
+  }
+
+  // 🔹 API Routes
   if (pathname.startsWith('/api/')) {
-    // Check if the API route is in the public list
     const isPublicApiRoute = publicApiRoutes.some(route => pathname.startsWith(route))
     if (isPublicApiRoute) {
       return NextResponse.next()
     }
     
-    // For protected API routes, check for authentication
     if (!token) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -56,7 +64,6 @@ export async function middleware(request: NextRequest) {
       )
     }
     
-    // Add user ID to request headers for API routes
     const requestHeaders = new Headers(request.headers)
     if (token.sub) {
       requestHeaders.set('x-user-id', token.sub)
@@ -69,7 +76,7 @@ export async function middleware(request: NextRequest) {
     })
   }
 
-  // Handle root path
+  // 🔹 Root path
   if (pathname === '/') {
     if (token) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
@@ -77,18 +84,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check if the current route is protected
+  // 🔹 Protected routes
   const isProtectedRoute = protectedRoutes.some(route => 
-    pathname.startsWith(route) || 
-    pathname === route
+    pathname.startsWith(route) || pathname === route
   )
   
-  // Check if the current route is public
+  // 🔹 Public routes
   const isPublicRoute = publicRoutes.some(route => 
-    pathname.startsWith(route) || 
-    pathname === route ||
-    pathname.startsWith('/_next/') ||
-    pathname.includes('.')
+    pathname.startsWith(route) || pathname === route
   )
 
   // Redirect unauthenticated users trying to access protected routes
@@ -98,8 +101,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Redirect authenticated users away from public routes
-  if (isPublicRoute && token && !pathname.startsWith('/api/')) {
+  // Redirect authenticated users away from public routes (mas nunca do dashboard)
+  if (isPublicRoute && token && !pathname.startsWith('/api/') && pathname !== '/dashboard') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
@@ -108,15 +111,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     * - public folder files (images, fonts, etc.)
-     */
     '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff|woff2|ttf|eot|css|js)$).*)',
   ],
 }

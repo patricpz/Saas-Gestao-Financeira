@@ -33,6 +33,17 @@ const prisma = new PrismaClient();
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any, // Type assertion needed for now
+  secret: process.env.NEXTAUTH_SECRET,
+  // Enable JWT session strategy
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  // JWT configuration
+  jwt: {
+    secret: process.env.NEXTAUTH_SECRET,
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -90,20 +101,14 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-  session: {
-    strategy: 'jwt',
-  },
   callbacks: {
     async jwt({ token, user, account }) {
       // Initial sign in
       if (account && user) {
         token.id = user.id;
-        // For credentials provider, we need to manually set the access token
-        if (account.provider === 'credentials') {
-          token.accessToken = user.accessToken;
-        } else {
-          token.accessToken = account.access_token;
-        }
+        token.email = user.email;
+        token.name = user.name;
+        token.accessToken = user.accessToken;
       }
       return token;
     },
@@ -111,8 +116,9 @@ export const authOptions: NextAuthOptions = {
       // Send properties to the client
       if (token) {
         session.user.id = token.id as string;
+        session.user.email = token.email as string;
+        session.user.name = token.name as string;
         session.accessToken = token.accessToken as string;
-        session.user.accessToken = token.accessToken as string;
       }
       return session;
     },
@@ -121,7 +127,8 @@ export const authOptions: NextAuthOptions = {
     signIn: '/login',
     error: '/login',
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  // Enable debug in development
+  debug: process.env.NODE_ENV === 'development'
 };
 
 const handler = NextAuth(authOptions);
