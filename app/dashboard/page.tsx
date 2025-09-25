@@ -10,9 +10,9 @@ import { useAuth } from '@/hooks/useAuth';
 import HeaderBar from '@/components/HeaderBar';
 import CardTranslation from '@/components/CardTranslation';
 import { useTransactions, type Transaction as TransactionType } from '@/hooks/mutations/useTransactions';
-import { TransactionModal } from '@/components/TransactionModal';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { BalanceCard } from '@/components/BalanceCard';
+import TransactionModal from '@/components/TransactionModal';
 
 
 
@@ -72,6 +72,7 @@ export default function DashboardPage() {
     <div className="min-h-screen flex flex-col">
       <HeaderBar />
       <div className="container mx-auto px-4 py-6">
+        <TransactionModal open={isModalOpen} onOpenChange={setIsModalOpen} />
         
         {/* Header e ações */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
@@ -86,8 +87,6 @@ export default function DashboardPage() {
               <Link href="/dashboard/reports">Relatório</Link>
             </Button>
           </div>
-
-          <TransactionModal open={isModalOpen} onOpenChange={setIsModalOpen} />
         </div>
 
         {/* Cards de saldo */}
