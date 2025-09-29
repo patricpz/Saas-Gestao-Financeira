@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
-// Define protected routes that require authentication
+// Rotas que exigem autenticação
 const protectedRoutes = [
   '/dashboard',
   '/transactions',
@@ -10,7 +10,7 @@ const protectedRoutes = [
   '/settings'
 ]
 
-// Define public routes that should not be accessible when authenticated
+// Rotas públicas que não devem ser acessadas quando autenticado
 const publicRoutes = [
   '/login',
   '/register',
@@ -27,7 +27,7 @@ const publicRoutes = [
   '/api/auth/register'
 ]
 
-// Allow specific API routes without authentication
+// Rotas de API públicas (sem autenticação)
 const publicApiRoutes = [
   '/api/auth/register',
   '/api/health'
@@ -35,15 +35,25 @@ const publicApiRoutes = [
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const token = await getToken({ 
+
+  // Debug log
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🔍 Middleware -> Path: ${pathname}`)
+  }
+
+  const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET
   })
-  
-  // 🔹 Tratar assets e arquivos estáticos separadamente
-  const isStaticAsset = 
-    pathname.startsWith('/_next/') || 
-    pathname.includes('.') || 
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🔑 Token: ${token ? 'Present' : 'Missing'}`)
+  }
+
+  // Ignorar assets estáticos e arquivos do Next.js
+  const isStaticAsset =
+    pathname.startsWith('/_next/') ||
+    pathname.includes('.') ||
     pathname.startsWith('/favicon.ico')
 
   if (isStaticAsset) {
@@ -56,19 +66,16 @@ export async function middleware(request: NextRequest) {
     if (isPublicApiRoute) {
       return NextResponse.next()
     }
-    
+
     if (!token) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
+
     const requestHeaders = new Headers(request.headers)
     if (token.sub) {
       requestHeaders.set('x-user-id', token.sub)
     }
-    
+
     return NextResponse.next({
       request: {
         headers: requestHeaders,
@@ -85,24 +92,27 @@ export async function middleware(request: NextRequest) {
   }
 
   // 🔹 Protected routes
-  const isProtectedRoute = protectedRoutes.some(route => 
-    pathname.startsWith(route) || pathname === route
-  )
-  
-  // 🔹 Public routes
-  const isPublicRoute = publicRoutes.some(route => 
-    pathname.startsWith(route) || pathname === route
+  const isProtectedRoute = protectedRoutes.some(route =>
+    pathname === route || pathname.startsWith(`${route}/`)
   )
 
-  // Redirect unauthenticated users trying to access protected routes
+  // 🔹 Public routes
+  const isPublicRoute = publicRoutes.some(route =>
+    pathname === route || pathname.startsWith(`${route}/`)
+  )
+
+  // Se for rota protegida e não tiver token → redireciona para login
   if (isProtectedRoute && !token) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🚫 Redirecting unauthenticated user from ${pathname} to login`)
+    }
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Redirect authenticated users away from public routes (mas nunca do dashboard)
-  if (isPublicRoute && token && !pathname.startsWith('/api/') && pathname !== '/dashboard') {
+  // Se for rota pública e tiver token → redireciona para dashboard
+  if (isPublicRoute && token && !pathname.startsWith('/api/') && !pathname.startsWith('/dashboard')) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
@@ -111,6 +121,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff|woff2|ttf|eot|css|js)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff|woff2|ttf|eot|css|js)$).*)',
   ],
 }

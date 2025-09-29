@@ -68,11 +68,37 @@ export default function DashboardPage() {
     };
   }, [transactionsData]);
 
+  const handleSaveTransaction = (transaction: {
+    description: string;
+    amount: number;
+    type: 'despesa' | 'receita';
+    category: string;
+  }) => {
+    try {
+      // Here you would typically make an API call to save the transaction
+      console.log('Saving transaction:', transaction);
+      // Example API call:
+      // await fetch('/api/transactions', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(transaction),
+      // });
+      setIsModalOpen(false);
+      // Optionally refresh your transactions data here
+    } catch (error) {
+      console.error('Failed to save transaction:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <HeaderBar />
       <div className="container mx-auto px-4 py-6">
-        <TransactionModal open={isModalOpen} onOpenChange={setIsModalOpen} />
+        <TransactionModal 
+          open={isModalOpen} 
+          onOpenChange={setIsModalOpen} 
+          onSave={handleSaveTransaction} 
+        />
         
         {/* Header e ações */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">

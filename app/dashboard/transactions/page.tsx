@@ -7,12 +7,12 @@ import { Plus, Filter, Download, EditIcon, TrashIcon, ArrowLeft, Loader2 } from 
 import { useMediaQuery } from '@/hooks/MediaQuery';
 import Link from 'next/link';
 import HeaderBar from '@/components/HeaderBar';
-import { TransactionModal } from '@/components/TransactionModal';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import TransactionModal from '@/components/TransactionModal';
 
 interface Category {
   id: string;
@@ -100,6 +100,28 @@ export default function TransactionsPage() {
     
   const balance = totalIncome - totalExpenses;
 
+  const handleSaveTransaction = (transaction: {
+    description: string;
+    amount: number;
+    type: 'despesa' | 'receita';
+    category: string;
+  }) => {
+    try {
+      // Here you would typically make an API call to save the transaction
+      console.log('Saving transaction:', transaction);
+      // Example API call:
+      // await fetch('/api/transactions', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(transaction),
+      // });
+      setIsModalOpen(false);
+      // Optionally refresh your transactions data here
+    } catch (error) {
+      console.error('Failed to save transaction:', error);
+    }
+  };
+
   return (
     <div className='min-h-screen flex flex-col'>
       <HeaderBar />
@@ -134,7 +156,7 @@ export default function TransactionsPage() {
                 <Plus className="h-4 w-4" />
                 <span>Nova Transação</span>
               </Button>
-              <TransactionModal open={isModalOpen} onOpenChange={setIsModalOpen} />
+              <TransactionModal open={isModalOpen} onOpenChange={setIsModalOpen} onSave={handleSaveTransaction} />
             </div>
           </div>
         </div>

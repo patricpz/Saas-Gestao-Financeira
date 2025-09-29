@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 interface TransactionModalProps {
   open: boolean;
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
   onSave: (transaction: {
     description: string;
     amount: number;
@@ -18,7 +18,7 @@ interface TransactionModalProps {
   }) => void;
 }
 
-export default function TransactionModal({ open, onClose, onSave }: TransactionModalProps) {
+export default function TransactionModal({ open, onOpenChange, onSave }: TransactionModalProps) {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState<number>(0);
   const [type, setType] = useState<'despesa' | 'receita'>('despesa');
@@ -31,14 +31,14 @@ export default function TransactionModal({ open, onClose, onSave }: TransactionM
     setAmount(0);
     setType('despesa');
     setCategory('');
-    onClose();
+    onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md rounded-2xl shadow-lg">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">Nova Transação</DialogTitle>
+          <DialogTitle>Nova Transação</DialogTitle>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
@@ -108,7 +108,7 @@ export default function TransactionModal({ open, onClose, onSave }: TransactionM
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button onClick={handleSave}>Salvar</Button>
