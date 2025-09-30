@@ -85,7 +85,8 @@ export default function RegisterPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Falha ao criar conta. Tente novamente.');
+        const apiMessage = (errorData && (errorData.message || errorData.error)) as string | undefined;
+        throw new Error(apiMessage || 'Falha ao criar conta. Tente novamente.');
       }
 
       // Registration successful, now sign in the user

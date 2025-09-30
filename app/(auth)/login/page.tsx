@@ -89,6 +89,7 @@ export default function LoginPage() {
     } catch (error) {
       console.error('Erro no login:', error);
       setError(error instanceof Error ? error.message : 'Ocorreu um erro ao fazer login');
+    } finally {
       setIsLoading(false);
     }
   };

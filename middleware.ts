@@ -29,6 +29,7 @@ const publicRoutes = [
 
 // Rotas de API públicas (sem autenticação)
 const publicApiRoutes = [
+  '/api/auth', // libera todas as rotas do NextAuth
   '/api/auth/register',
   '/api/health'
 ]
@@ -62,6 +63,7 @@ export async function middleware(request: NextRequest) {
 
   // 🔹 API Routes
   if (pathname.startsWith('/api/')) {
+    // Libera qualquer rota que comece com entradas de publicApiRoutes
     const isPublicApiRoute = publicApiRoutes.some(route => pathname.startsWith(route))
     if (isPublicApiRoute) {
       return NextResponse.next()
