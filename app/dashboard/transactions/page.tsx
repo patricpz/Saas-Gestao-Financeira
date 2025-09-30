@@ -100,27 +100,6 @@ export default function TransactionsPage() {
     
   const balance = totalIncome - totalExpenses;
 
-  const handleSaveTransaction = (transaction: {
-    description: string;
-    amount: number;
-    type: 'despesa' | 'receita';
-    category: string;
-  }) => {
-    try {
-      // Here you would typically make an API call to save the transaction
-      console.log('Saving transaction:', transaction);
-      // Example API call:
-      // await fetch('/api/transactions', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(transaction),
-      // });
-      setIsModalOpen(false);
-      // Optionally refresh your transactions data here
-    } catch (error) {
-      console.error('Failed to save transaction:', error);
-    }
-  };
 
   return (
     <div className='min-h-screen flex flex-col'>
@@ -156,7 +135,7 @@ export default function TransactionsPage() {
                 <Plus className="h-4 w-4" />
                 <span>Nova Transação</span>
               </Button>
-              <TransactionModal open={isModalOpen} onOpenChange={setIsModalOpen} onSave={handleSaveTransaction} />
+              <TransactionModal open={isModalOpen} onOpenChange={setIsModalOpen} />
             </div>
           </div>
         </div>
