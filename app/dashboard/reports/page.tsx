@@ -7,6 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import HeaderBar from "@/components/HeaderBar";
+import { GlobalModal } from "@/components/ui/GlobalModal";
 
 type TimeRange = 'week' | 'month' | 'year';
 type ChartType = 'bar' | 'pie';
@@ -17,6 +18,45 @@ const COLORS = [
 ];
 
 // Mock data - replace with real data from your API
+function ModalDemo() {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <div className="mb-6 p-4 border rounded-lg">
+      <h3 className="text-lg font-medium mb-2">Demonstração do Modal</h3>
+      <p className="text-sm text-muted-foreground mb-4">
+        Clique no botão abaixo para abrir um modal de exemplo.
+      </p>
+      <Button onClick={() => setIsOpen(true)}>Abrir Modal de Exemplo</Button>
+      
+      <GlobalModal
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        title="Título do Modal"
+        primaryAction={{
+          label: 'Confirmar',
+          onClick: () => {
+            alert('Ação confirmada!');
+            setIsOpen(false);
+          },
+        }}
+        secondaryAction={{
+          label: 'Cancelar',
+          onClick: () => setIsOpen(false),
+          variant: 'outline',
+        }}
+      >
+        <div className="py-4">
+          <p>Este é um exemplo de conteúdo dentro do modal.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Você pode colocar qualquer conteúdo aqui, como formulários, mensagens, etc.
+          </p>
+        </div>
+      </GlobalModal>
+    </div>
+  );
+}
+
 export default function ReportsPage() {
     const [timeRange, setTimeRange] = useState<TimeRange>('month');
     const [chartType, setChartType] = useState<ChartType>('bar');
@@ -39,8 +79,9 @@ export default function ReportsPage() {
             <HeaderBar />
             <div className="min-h-screen flex flex-col">
                 <div className="container mx-auto px-4 py-8">
-                    <div className="flex flex-col space-y-4 mb-8">
-                        <div className="flex items-center gap-4">
+                    <div className="flex-1 space-y-4 p-8 pt-6">
+                        <ModalDemo />
+                        <div className="flex items-center justify-between space-y-2">
                             <Button variant="ghost" size="icon" asChild className="shrink-0">
                                 <Link href="/dashboard">
                                     <ArrowLeft className="h-5 w-5" />

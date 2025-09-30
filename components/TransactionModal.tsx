@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCreateTransaction } from '@/hooks/mutations/useTransactions';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Category {
   id: string;
@@ -23,19 +24,33 @@ interface TransactionModalProps {
 
 export default function TransactionModal({ open, onOpenChange }: TransactionModalProps) {
   const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState<number>(0);
+  const [amount, setAmount] = useState<string>('');
   const [type, setType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
   const [categoryId, setCategoryId] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const formatCurrency = useCurrencyFormatter();
+
+  // --- helpers para formatar/parsing ---
+  const formatToCurrency = (value: string) => {
+    const onlyNums = value.replace(/\D/g, '');
+    if (!onlyNums) return '';
+    const number = Number(onlyNums) / 100;
+    return formatCurrency(number);
+  };
+
+  const parseCurrency = (value: string) => {
+    const onlyNums = value.replace(/\D/g, '');
+    if (!onlyNums) return 0;
+    return Number(onlyNums) / 100;
+  };
 
   // Buscar categorias
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ['categories'],
     queryFn: async () => {
       const response = await fetch('/api/categories');
-      if (!response.ok) {
-        throw new Error('Failed to fetch categories');
-      }
+      if (!response.ok) throw new Error('Failed to fetch categories');
       return response.json();
     },
   });
@@ -52,23 +67,23 @@ export default function TransactionModal({ open, onOpenChange }: TransactionModa
       return;
     }
 
+    const numericAmount = parseCurrency(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      toast.error('Por favor, insira um valor válido');
+      return;
+    }
+
     try {
       await createTransaction.mutateAsync({
         description,
-        amount: type === 'EXPENSE' ? -Math.abs(amount) : Math.abs(amount),
+        amount: type === 'EXPENSE' ? -Math.abs(numericAmount) : Math.abs(numericAmount),
         type,
         categoryId,
         date,
       });
 
       toast.success('Transação criada com sucesso!');
-      
-      // Limpar formulário
-      setDescription('');
-      setAmount(0);
-      setType('EXPENSE');
-      setCategoryId('');
-      setDate(new Date().toISOString().split('T')[0]);
+      resetForm();
       onOpenChange(false);
     } catch (error) {
       toast.error('Erro ao criar transação');
@@ -76,45 +91,59 @@ export default function TransactionModal({ open, onOpenChange }: TransactionModa
     }
   };
 
-  // Reset form when modal opens
+  const resetForm = () => {
+    setDescription('');
+    setAmount('');
+    setType('EXPENSE');
+    setCategoryId('');
+    setDate(new Date().toISOString().split('T')[0]);
+  };
+
+  // Reset form quando abrir modal
   useEffect(() => {
-    if (open) {
-      setDescription('');
-      setAmount(0);
-      setType('EXPENSE');
-      setCategoryId('');
-      setDate(new Date().toISOString().split('T')[0]);
-    }
+    if (open) resetForm();
   }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Nova Transação</DialogTitle>
+          <DialogTitle>{type === 'EXPENSE' ? 'Nova Despesa' : 'Nova Receita'}</DialogTitle>
         </DialogHeader>
-
         <div className="grid gap-4 py-4">
-          {/* Descrição */}
-          <div className="grid gap-2">
-            <Label htmlFor="description">Descrição</Label>
-            <Input
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ex: Conta de luz"
-            />
-          </div>
+        {/* Descrição */}
+        <div className="grid gap-2">
+          <Label htmlFor="description">Descrição</Label>
+          <Input
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Ex: Conta de luz"
+          />
+        </div>
 
-          {/* Valor */}
-          <div className="grid gap-2">
+        {/* Valor */}
+        <div className="grid gap-2">
             <Label htmlFor="amount">Valor</Label>
             <Input
               id="amount"
-              type="number"
+              type="text"
               value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
-              placeholder="0,00"
+              onChange={(e) => {
+                const input = e.target.value;
+                if (!input) {
+                  setAmount('');
+                  return;
+                }
+                setAmount(formatToCurrency(input));
+              }}
+              onBlur={() => {
+                if (amount) {
+                  const value = parseCurrency(amount);
+                  setAmount(formatCurrency(value));
+                }
+              }}
+              placeholder="R$ 0,00"
             />
           </div>
 
@@ -138,7 +167,7 @@ export default function TransactionModal({ open, onOpenChange }: TransactionModa
                 variant={type === 'EXPENSE' ? 'default' : 'outline'}
                 onClick={() => {
                   setType('EXPENSE');
-                  setCategoryId(''); // Reset category when type changes
+                  setCategoryId('');
                 }}
                 className="flex-1"
               >
@@ -149,7 +178,7 @@ export default function TransactionModal({ open, onOpenChange }: TransactionModa
                 variant={type === 'INCOME' ? 'default' : 'outline'}
                 onClick={() => {
                   setType('INCOME');
-                  setCategoryId(''); // Reset category when type changes
+                  setCategoryId('');
                 }}
                 className="flex-1"
               >
@@ -176,7 +205,7 @@ export default function TransactionModal({ open, onOpenChange }: TransactionModa
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 pt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>

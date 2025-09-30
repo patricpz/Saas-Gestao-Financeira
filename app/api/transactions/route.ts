@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { listTransactions, createTransaction } from '@/lib/transactions/service';
 
 export const GET = async (request: NextRequest) => {
   try {
@@ -14,19 +14,7 @@ export const GET = async (request: NextRequest) => {
       );
     }
 
-    const transactions = await prisma.transaction.findMany({
-      where: {
-        userId: userId,
-      },
-      orderBy: {
-        date: 'desc',
-      },
-      take: limit,
-      include: {
-        category: true,
-      },
-    });
-
+    const transactions = await listTransactions(userId, limit);
     return NextResponse.json(transactions);
   } catch (error) {
     console.error('Error fetching transactions:', error);
@@ -56,18 +44,13 @@ export const POST = async (request: NextRequest) => {
       );
     }
 
-    const transaction = await prisma.transaction.create({
-      data: {
-        amount,
-        description,
-        type,
-        date: date ? new Date(date) : new Date(),
-        userId,
-        categoryId,
-      },
-      include: {
-        category: true,
-      },
+    const transaction = await createTransaction({
+      amount,
+      description,
+      type,
+      date,
+      userId,
+      categoryId,
     });
 
     return NextResponse.json(transaction, { status: 201 });
@@ -80,51 +63,4 @@ export const POST = async (request: NextRequest) => {
   }
 };
 
-export const DELETE = async (
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) => {
-  try {
-    const userId = request.headers.get('x-user-id');
-    const { id } = params;
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User not authenticated' },
-        { status: 401 }
-      );
-    }
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Transaction ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Verifica se a transação pertence ao usuário
-    const transaction = await prisma.transaction.findUnique({
-      where: { id },
-      select: { userId: true },
-    });
-
-    if (!transaction || transaction.userId !== userId) {
-      return NextResponse.json(
-        { error: 'Transaction not found or access denied' },
-        { status: 404 }
-      );
-    }
-
-    await prisma.transaction.delete({
-      where: { id },
-    });
-
-    return new NextResponse(null, { status: 204 });
-  } catch (error) {
-    console.error('Error deleting transaction:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete transaction' },
-      { status: 500 }
-    );
-  }
-};
+// DELETE por id será tratado na rota dinâmica /api/transactions/[id]

@@ -41,14 +41,12 @@ export default function TransactionsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
       router.push('/login');
     }
   }, [isAuthLoading, isAuthenticated, router]);
 
-  // Fetch transactions
   const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
     queryKey: ['transactions'],
     queryFn: async (): Promise<Transaction[]> => {
@@ -63,7 +61,6 @@ export default function TransactionsPage() {
     enabled: !!userId,
   });
 
-  // Delete transaction mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/transactions/${id}`, {
@@ -72,7 +69,7 @@ export default function TransactionsPage() {
       if (!response.ok) {
         throw new Error('Failed to delete transaction');
       }
-      return response.json();
+      return null;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
@@ -83,13 +80,54 @@ export default function TransactionsPage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Omit<Transaction, 'id' | 'createdAt' | 'updatedAt' | 'category'>> & { type?: 'INCOME' | 'EXPENSE' } }) => {
+      const response = await fetch(`/api/transactions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update transaction');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      toast.success('Transação atualizada com sucesso');
+    },
+    onError: () => {
+      toast.error('Erro ao atualizar transação');
+    },
+  });
+
+  const handleEdit = (t: Transaction) => {
+    const newDescription = prompt('Descrição', t.description ?? '');
+    if (newDescription === null) return;
+    const currentAbs = Math.abs(t.amount);
+    const amountStr = prompt('Valor (use ponto para decimais)', String(currentAbs));
+    if (amountStr === null) return;
+    const parsed = Number(amountStr);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      toast.error('Valor inválido');
+      return;
+    }
+    const signedAmount = t.type === 'EXPENSE' ? -Math.abs(parsed) : Math.abs(parsed);
+    updateMutation.mutate({
+      id: t.id,
+      data: {
+        description: newDescription,
+        amount: signedAmount,
+      },
+    });
+  };
+
   const handleDelete = (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta transação?')) {
       deleteMutation.mutate(id);
     }
   };
 
-  // Calculate totals
   const totalIncome = transactions
     .filter((t) => t.type === 'INCOME')
     .reduce((sum, t) => sum + Math.abs(t.amount), 0);
@@ -187,10 +225,10 @@ export default function TransactionsPage() {
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(transaction.amount)}
                     </p>
                     <div className="flex gap-1 mt-2">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-muted-foreground hover:text-blue-600">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-muted-foreground hover:text-blue-600" onClick={() => handleEdit(transaction)}>
                         <EditIcon className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-muted-foreground hover:text-red-600">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-muted-foreground hover:text-red-600" onClick={() => handleDelete(transaction.id)}>
                         <TrashIcon className="h-4 w-4" />
                       </Button>
                     </div>
@@ -271,16 +309,14 @@ export default function TransactionsPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button 
                             className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
-                            onClick={() => {
-                              // TODO: Implement edit functionality
-                            }}
+                            onClick={() => handleEdit(transaction)}
                           >
                             <EditIcon className="h-4 w-4" />
                           </button>
                           <button 
                             className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                             onClick={() => {
-                              // TODO: Implement delete functionality
+                              handleDelete(transaction.id);
                             }}
                           >
                             <TrashIcon className="h-4 w-4" />
