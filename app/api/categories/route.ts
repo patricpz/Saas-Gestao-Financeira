@@ -71,13 +71,11 @@ export const POST = async (request: NextRequest) => {
 };
 
 // Rota para deletar uma categoria
-export const DELETE = async (
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) => {
+export const DELETE = async (request: NextRequest) => {
   try {
     const userId = request.headers.get('x-user-id');
-    const { id } = params;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
 
     if (!userId) {
       return NextResponse.json(
@@ -93,7 +91,6 @@ export const DELETE = async (
       );
     }
 
-    // Verifica se a categoria pertence ao usuário
     const category = await prisma.category.findUnique({
       where: { id },
       select: { userId: true },
@@ -106,7 +103,6 @@ export const DELETE = async (
       );
     }
 
-    // Verifica se há transações usando esta categoria
     const transactionsCount = await prisma.transaction.count({
       where: { categoryId: id },
     });
@@ -118,9 +114,7 @@ export const DELETE = async (
       );
     }
 
-    await prisma.category.delete({
-      where: { id },
-    });
+    await prisma.category.delete({ where: { id } });
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

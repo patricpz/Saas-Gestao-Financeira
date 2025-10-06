@@ -1,13 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { updateTransaction, deleteTransaction, getTransactionById } from '@/lib/transactions/service'
 
-export const GET = async (
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) => {
+export const GET = async (request: NextRequest, context: any) => {
   try {
     const userId = request.headers.get('x-user-id')
-    const { id } = params
+    const { id } = context.params
 
     if (!userId) {
       return NextResponse.json({ error: 'User not authenticated' }, { status: 401 })
@@ -25,13 +22,10 @@ export const GET = async (
   }
 }
 
-export const PUT = async (
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) => {
+export const PUT = async (request: NextRequest, context: any) => {
   try {
     const userId = request.headers.get('x-user-id')
-    const { id } = params
+    const { id } = context.params
     const body = await request.json()
 
     if (!userId) {
@@ -50,13 +44,10 @@ export const PUT = async (
   }
 }
 
-export const DELETE = async (
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) => {
+export const DELETE = async (request: NextRequest, context: any) => {
   try {
     const userId = request.headers.get('x-user-id')
-    const { id } = params
+    const { id } = context.params
 
     if (!userId) {
       return NextResponse.json({ error: 'User not authenticated' }, { status: 401 })
@@ -73,5 +64,3 @@ export const DELETE = async (
     return NextResponse.json({ error: 'Failed to delete transaction' }, { status: 500 })
   }
 }
-
-

@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-
+import { authOptions } from '@/lib/authOptions';
 type User = {
   id: string;
   email: string;

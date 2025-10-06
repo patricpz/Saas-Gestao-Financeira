@@ -8,26 +8,25 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Pencil, Save, Camera, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { UserProfile } from '@/types/User';
 
 export default function ProfilePage() {
-  // Mock user data - replace with actual data from your authentication provider
-  // const user = {
-  //   name: 'João Silva',
-  //   email: 'joao@example.com',
-  //   phone: '(11) 98765-4321',
-  //   avatar: '/placeholder-avatar.jpg',
-  //   joinDate: 'Junho 2023',
-  // };
+  const { user } = useAuth() as { user: UserProfile | null };
 
-  const { user } = useAuth();
   const userData = {
-    name: user?.user_metadata?.full_name?.trim() || user?.email?.split('@')[0] || 'Usuário',
+    name:
+      user?.user_metadata?.full_name?.trim() ||
+      user?.email?.split('@')[0] ||
+      'Usuário',
     email: user?.email || '',
     phone: user?.phone || '',
     avatar: user?.user_metadata?.avatar_url || '',
-    joinDate: user?.created_at 
-      ? new Date(user.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-      : ''
+    joinDate: user?.created_at
+      ? new Date(user.created_at).toLocaleDateString('pt-BR', {
+          month: 'long',
+          year: 'numeric',
+        })
+      : '',
   };
   
   // Get user initials for avatar

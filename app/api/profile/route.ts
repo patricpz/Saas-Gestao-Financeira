@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { authOptions } from '@/lib/authOptions';
 import { profileUtils } from '@/lib/profile-utils';
 
 interface ProfileData {

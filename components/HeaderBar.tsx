@@ -16,10 +16,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { UserIcon, SettingsIcon, LogOutIcon, ChevronDownIcon, Shield, Menu, X, DollarSign } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { UserProfile } from "@/types/User";
 
 export default function HeaderBar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const { user, signOut } = useAuth();
+    const {  signOut } = useAuth();
+      const { user } = useAuth()  as { user: UserProfile | null };
+    
     const router = useRouter();
 
     const handleSignOut = async () => {
