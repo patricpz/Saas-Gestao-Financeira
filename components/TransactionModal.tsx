@@ -76,7 +76,7 @@ export default function TransactionModal({ open, onOpenChange }: TransactionModa
     try {
       await createTransaction.mutateAsync({
         description,
-        amount: type === 'EXPENSE' ? -Math.abs(numericAmount) : Math.abs(numericAmount),
+        amount: type === 'EXPENSE' ? Math.abs(numericAmount) : Math.abs(numericAmount),
         type,
         categoryId,
         date,

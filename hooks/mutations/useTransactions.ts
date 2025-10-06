@@ -13,12 +13,22 @@ const api = axios.create({
 
 type TransactionType = 'INCOME' | 'EXPENSE';
 
+export interface Category {
+  id: string;
+  name: string;
+  type?: string;
+  userId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Transaction {
   id: string;
   amount: number;
   description: string;
   type: TransactionType;
-  category: string;
+  category: Category | string | null;
+  categoryId: string;
   date: string;
   createdAt: string;
   updatedAt: string;

@@ -5,9 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import HeaderBar from "@/components/HeaderBar";
 import { GlobalModal } from "@/components/ui/GlobalModal";
+import { useTransactions, type Transaction, type Category } from "@/hooks/mutations/useTransactions";
+
+type CategoryData = {
+  name: string;
+  value: number;
+};
 
 type TimeRange = 'week' | 'month' | 'year';
 type ChartType = 'bar' | 'pie';
@@ -60,19 +66,83 @@ function ModalDemo() {
 export default function ReportsPage() {
     const [timeRange, setTimeRange] = useState<TimeRange>('month');
     const [chartType, setChartType] = useState<ChartType>('bar');
+    const { data: transactionsData } = useTransactions();
 
-    // Mock data - replace with real data from your API
-    const categoryData = [
-        { name: 'Alimentação', value: 1200 },
-        { name: 'Moradia', value: 2500 },
-        { name: 'Transporte', value: 800 },
-        { name: 'Lazer', value: 600 },
-        { name: 'Saúde', value: 300 },
-        { name: 'Educação', value: 400 },
-        { name: 'Outros', value: 350 },
-    ];
+      const { balance, income, expenses, recentTransactions } = useMemo(() => {
+        if (!transactionsData) {
+          return { 
+            balance: 0, 
+            income: 0, 
+            expenses: 0, 
+            recentTransactions: [] as Transaction[] 
+          };
+        }
+    
+        const transactions = Array.isArray(transactionsData) ? transactionsData : [transactionsData];
+    
+        const income = transactions
+          .filter((t) => t.type === 'INCOME')
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    
+        const expenses = transactions
+          .filter((t) => t.type === 'EXPENSE')
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    
+        const balance = income - expenses;
+    
+        const recentTransactions = [...transactions]
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .slice(0, 5);
+    
+        return { 
+          balance, 
+          income, 
+          expenses, 
+          recentTransactions 
+        };
+      }, [transactionsData]);
 
-    const totalExpenses = categoryData.reduce((sum, item) => sum + item.value, 0);
+      console.log('transactionsData', transactionsData)
+
+      // Process transactions data to get categories with their total amounts
+      const categoryData = useMemo<CategoryData[]>(() => {
+        if (!transactionsData) return [];
+        
+        // Group transactions by category and sum amounts
+        const categoryMap = new Map<string, number>();
+        
+        transactionsData.forEach(transaction => {
+          // Get category name from the transaction
+          let categoryName = 'Outros';
+          
+          if (transaction.category) {
+            if (typeof transaction.category === 'string') {
+              categoryName = transaction.category;
+            } else if (transaction.category && typeof transaction.category === 'object' && 'name' in transaction.category) {
+              categoryName = transaction.category.name;
+            }
+          }
+          
+          const amount = Math.abs(Number(transaction.amount)) || 0;
+          
+          if (categoryMap.has(categoryName)) {
+            categoryMap.set(categoryName, categoryMap.get(categoryName)! + amount);
+          } else {
+            categoryMap.set(categoryName, amount);
+          }
+        });
+        
+        // Convert the map to an array of { name, value } objects and sort by value (descending)
+        return Array.from(categoryMap.entries())
+          .map(([name, value]) => ({
+            name,
+            value
+          }))
+          .sort((a, b) => b.value - a.value);
+      }, [transactionsData]);
+
+      // Calculate total expenses from the actual data
+      const totalExpenses = categoryData.reduce((sum, item) => sum + item.value, 0);
 
     return (
         <div className='min-h-screen flex flex-col'>

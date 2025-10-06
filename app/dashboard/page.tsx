@@ -55,6 +55,10 @@ export default function DashboardPage() {
       .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
     const balance = income - expenses;
+    console.log('balance', balance)
+    console.log('income', income)
+    console.log('expenses', expenses)
+    console.log(transactions, 'transactions')
 
     const recentTransactions = [...transactions]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
