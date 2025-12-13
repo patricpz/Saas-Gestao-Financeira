@@ -66,7 +66,7 @@ interface CreateTransactionInput {
   amount: number;
   description: string;
   type: TransactionType;
-  category: string;
+  categoryId: string;
   date: string;
 }
 
