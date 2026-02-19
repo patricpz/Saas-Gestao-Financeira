@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import HeaderBar from "@/components/HeaderBar";
 import { GlobalModal } from "@/components/ui/GlobalModal";
-import { useTransactions, type Transaction, type Category } from "@/hooks/mutations/useTransactions";
+import { useTransactions } from "@/hooks/mutations/useTransactions";
 
 type CategoryData = {
   name: string;
@@ -74,7 +74,7 @@ export default function ReportsPage() {
             balance: 0, 
             income: 0, 
             expenses: 0, 
-            recentTransactions: [] as Transaction[] 
+            recentTransactions: [] as any[] 
           };
         }
     
