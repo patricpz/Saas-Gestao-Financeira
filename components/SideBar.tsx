@@ -49,11 +49,11 @@ export default function Sidebar() {
     // Definição dos itens do menu conforme sua imagem
     const menuItems = [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/dashboard/accounts", label: "Accounts", icon: Landmark },
+        // { href: "/dashboard/accounts", label: "Accounts", icon: Landmark },
         { href: "/dashboard/transactions", label: "Transactions", icon: ReceiptText },
-        { href: "/dashboard/budgets", label: "Budgets", icon: PieChart },
+        // { href: "/dashboard/budgets", label: "Budgets", icon: PieChart },
         { href: "/dashboard/insights", label: "AI Insights", icon: Sparkles },
-        { href: "/dashboard/settings", label: "Settings", icon: Settings },
+        // { href: "/dashboard/settings", label: "Settings", icon: Settings },
     ];
 
     // Componente interno para renderizar a lista de links (reusável no Mobile e Desktop)
