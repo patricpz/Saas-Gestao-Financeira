@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, getSession } from 'next-auth/react'
+import { authService } from '@/lib/services/auth'
+import { DATA_SOURCE } from '@/lib/services/config'
 
 interface User {
   id: string
@@ -35,6 +36,18 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+const STORAGE_KEY = 'mock_auth_session'
+const COOKIE_NAME = 'access_token'
+
+const setCookie = (name: string, value: string, days = 1) => {
+  const expires = new Date(Date.now() + days * 86400000).toUTCString()
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; expires=${expires}`
+}
+
+const clearCookie = (name: string) => {
+  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
@@ -42,56 +55,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    // Check authentication status on mount
-    const checkAuth = async () => {
-      try {
-        const session = await getSession()
-        if (session?.user) {
-          setSession(session as any)
-          setUser({
-            id: session.user.id,
-            email: session.user.email!,
-            name: session.user.name,
-            image: session.user.image
-          })
-        } else {
-          setSession(null)
-          setUser(null)
-        }
-      } catch (error) {
-        console.error('Error checking auth status:', error)
-      } finally {
-        setLoading(false)
-      }
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) {
+      setLoading(false)
+      return
     }
 
-    checkAuth()
-  }, [])
-
-  const signIn = async (email: string, password: string) => {
     try {
-      const result = await nextAuthSignIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      })
-
-      if (result?.error) {
-        return { ok: false, error: result.error }
-      }
-
-      // Get the updated session
-      const session = await getSession()
-      if (session?.user) {
-        setSession(session as any)
-        setUser({
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.name,
-          image: session.user.image,
-          accessToken: (session as any).accessToken || (session.user as any).accessToken,
+      const parsed = JSON.parse(raw) as { user: User; accessToken: string; expires: string }
+      if (parsed?.user) {
+        setUser(parsed.user)
+        setSession({
+          user: parsed.user,
+          accessToken: parsed.accessToken,
+          expires: parsed.expires,
         })
       }
+    } catch (error) {
+      console.error('Error reading mock auth session:', error)
+      localStorage.removeItem(STORAGE_KEY)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const signIn = async (email: string, _password: string) => {
+    try {
+      if (DATA_SOURCE === 'http') {
+        return { ok: false, error: 'Login externo ainda não configurado.' }
+      }
+
+      const now = Date.now()
+      const accessToken = `mock_${now}`
+      const mockUser: User = {
+        id: `mock_${now}`,
+        email,
+        name: email.split('@')[0],
+        image: null,
+        accessToken,
+      }
+
+      const expires = new Date(now + 24 * 60 * 60 * 1000).toISOString()
+
+      const newSession: Session = {
+        user: mockUser,
+        accessToken,
+        expires,
+      }
+
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ user: mockUser, accessToken, expires })
+      )
+
+      setCookie(COOKIE_NAME, accessToken, 1)
+
+      setUser(mockUser)
+      setSession(newSession)
 
       return { ok: true }
     } catch (error) {
@@ -102,20 +122,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password, name }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        return { ok: false, error: data.error || 'Registration failed' }
+      const result = await authService.register({ email, password, name })
+      if (!result.ok) {
+        return { ok: false, error: result.error || 'Registration failed' }
       }
-
       return { ok: true }
     } catch (error) {
       console.error('Sign up error:', error)
@@ -124,7 +134,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    await nextAuthSignOut({ redirect: false })
+    localStorage.removeItem(STORAGE_KEY)
+    clearCookie(COOKIE_NAME)
     setSession(null)
     setUser(null)
     router.push('/login')

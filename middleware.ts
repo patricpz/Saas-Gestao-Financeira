@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { getToken } from 'next-auth/jwt'
 
 // Rotas que exigem autenticação
 const protectedRoutes = [
@@ -16,21 +15,11 @@ const publicRoutes = [
   '/register',
   '/forgot-password',
   '/reset-password',
-  '/',
-  '/api/auth/signin',
-  '/api/auth/error',
-  '/api/auth/signout',
-  '/api/auth/csrf',
-  '/api/auth/providers',
-  '/api/auth/session',
-  '/api/auth/callback/credentials',
-  '/api/auth/register'
+  '/'
 ]
 
 // Rotas de API públicas (sem autenticação)
 const publicApiRoutes = [
-  '/api/auth', // libera todas as rotas do NextAuth
-  '/api/auth/register',
   '/api/health'
 ]
 
@@ -42,10 +31,7 @@ export async function middleware(request: NextRequest) {
     console.log(`🔍 Middleware -> Path: ${pathname}`)
   }
 
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET
-  })
+  const token = request.cookies.get('access_token')?.value
 
   if (process.env.NODE_ENV === 'development') {
     console.log(`🔑 Token: ${token ? 'Present' : 'Missing'}`)
@@ -74,8 +60,8 @@ export async function middleware(request: NextRequest) {
     }
 
     const requestHeaders = new Headers(request.headers)
-    if (token.sub) {
-      requestHeaders.set('x-user-id', token.sub)
+    if (token) {
+      requestHeaders.set('x-user-id', token)
     }
 
     return NextResponse.next({

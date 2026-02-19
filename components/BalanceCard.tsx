@@ -8,6 +8,9 @@ interface BalanceCardProps {
   value: string;
   icon: React.ReactNode;
   color?: string;
+  subtitle?: string;
+  trend?: string;
+  trendClassName?: string;
   className?: string;
 }
 
@@ -16,22 +19,29 @@ export function BalanceCard({
   value, 
   icon, 
   color = 'text-muted-foreground',
+  subtitle,
+  trend,
+  trendClassName = 'text-muted-foreground',
   className
 }: BalanceCardProps) {
   return (
-    <Card className={cn('h-full', className)}>
+    <Card className={cn('h-full rounded-2xl shadow-sm', className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        <div className={cn('p-2 rounded-full bg-muted', color)}>
-          {icon}
-        </div>
+        {trend ? <p className={cn('text-xs font-semibold', trendClassName)}>{trend}</p> : null}
       </CardHeader>
       <CardContent>
-        <div className={cn('text-2xl font-bold', color)}>
-          {value}
+        <div className="mb-2 flex items-center justify-between">
+          <div className="text-4xl font-bold text-slate-900">
+            {value}
+          </div>
+          <div className={cn('rounded-full bg-blue-50 p-2', color)}>
+          {icon}
+          </div>
         </div>
+        {subtitle ? <p className="text-sm text-slate-500">{subtitle}</p> : null}
       </CardContent>
     </Card>
   );

@@ -13,8 +13,6 @@
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@auth/core": "^0.34.2",
-    "@auth/prisma-adapter": "^1.0.17",
     "@hookform/resolvers": "^5.2.2",
     "@prisma/client": "^6.16.2",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -35,9 +33,9 @@
     "date-fns": "^4.1.0",
     "lucide-react": "^0.544.0",
     "next": "15.5.3",
-    "next-auth": "^4.24.11",
     "next-themes": "^0.4.6",
     "pg": "^8.11.3",
+    "radix-ui": "^1.4.3",
     "react": "19.1.0",
     "react-day-picker": "^9.10.0",
     "react-dom": "19.1.0",

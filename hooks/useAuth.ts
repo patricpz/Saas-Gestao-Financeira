@@ -1,44 +1,23 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
-
-interface SessionUser {
-  id: string;
-  name?: string | null;
-  email?: string | null;
-  image?: string | null;
-  accessToken?: string;
-}
-
-interface AuthSession {
-  user: SessionUser;
-  expires: string;
-  accessToken?: string;
-}
+import { useAuth as useAuthContext } from '@/context/AuthContext';
 
 export function useAuth() {
-  const { data: session, status } = useSession() as {
-    data: AuthSession | null;
-    status: 'loading' | 'authenticated' | 'unauthenticated';
-  };
-  
-  const isLoading = status === 'loading';
-  const isAuthenticated = status === 'authenticated';
-  const userId = session?.user?.id;
-  const accessToken = session?.accessToken || session?.user?.accessToken;
+  const { user, session, loading } = useAuthContext();
+  const isAuthenticated = !!user;
 
   return {
     session,
-    userId,
-    accessToken,
-    isLoading,
+    userId: user?.id,
+    accessToken: session?.accessToken || user?.accessToken,
+    isLoading: loading,
     isAuthenticated,
   };
 }
 
 export function useRequireAuth() {
   const { session, userId, accessToken, isLoading, isAuthenticated } = useAuth();
-  
+
   if (isLoading) {
     return { isLoading: true };
   }

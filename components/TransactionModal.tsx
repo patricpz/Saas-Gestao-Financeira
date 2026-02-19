@@ -10,12 +10,8 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
-interface Category {
-  id: string;
-  name: string;
-  type: 'INCOME' | 'EXPENSE';
-}
+import { categoriesService } from '@/lib/services/categories';
+import type { Category } from '@/lib/types/domain';
 
 interface TransactionModalProps {
   open: boolean;
@@ -48,11 +44,7 @@ export default function TransactionModal({ open, onOpenChange }: TransactionModa
   // Buscar categorias
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ['categories'],
-    queryFn: async () => {
-      const response = await fetch('/api/categories');
-      if (!response.ok) throw new Error('Failed to fetch categories');
-      return response.json();
-    },
+    queryFn: async () => categoriesService.list(),
   });
 
   // Hook para criar transação

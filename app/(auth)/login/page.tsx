@@ -11,8 +11,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signIn, useSession, getSession } from 'next-auth/react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuth } from '@/context/AuthContext';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido').min(1, 'O e-mail é obrigatório'),
@@ -30,14 +30,14 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
   const registered = searchParams.get('registered') === 'true';
-  const { data: session, status } = useSession();
+  const { user, signIn } = useAuth();
   
   // Handle redirection if already authenticated
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (user) {
       router.push(callbackUrl);
     }
-  }, [status, callbackUrl, router]);
+  }, [user, callbackUrl, router]);
 
   // Show success message if redirected from registration
   useEffect(() => {
@@ -67,24 +67,12 @@ export default function LoginPage() {
     setError(null);
     
     try {
-      const result = await signIn('credentials', {
-        redirect: false,
-        email: data.email,
-        password: data.password,
-        callbackUrl,
-      });
-      
-      if (result?.error) {
-        throw new Error('Credenciais inválidas. Verifique seu e-mail e senha.');
+      const result = await signIn(data.email, data.password);
+
+      if (!result.ok) {
+        throw new Error(result.error || 'Credenciais inválidas.');
       }
-      
-      // If we have a callback URL, redirect to it
-      if (result?.url) {
-        router.push(result.url);
-        return;
-      }
-      
-      // Fallback redirect
+
       router.push(callbackUrl);
     } catch (error) {
       console.error('Erro no login:', error);

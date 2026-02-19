@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Plus, Filter, Download, EditIcon, TrashIcon, ArrowLeft, Loader2 } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/MediaQuery';
@@ -9,99 +9,25 @@ import Link from 'next/link';
 import HeaderBar from '@/components/HeaderBar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import TransactionModal from '@/components/TransactionModal';
-
-interface Category {
-  id: string;
-  name: string;
-}
-
-interface Transaction {
-  id: string;
-  amount: number;
-  description: string | null;
-  date: string;
-  type: 'INCOME' | 'EXPENSE';
-  categoryId: string;
-  category: {
-    id: string;
-    name: string;
-  } | null;
-  createdAt: string;
-  updatedAt: string;
-}
+import { useTransactions, useDeleteTransaction, useUpdateTransaction } from '@/hooks/mutations/useTransactions';
+import Sidebar from '@/components/SideBar';
 
 export default function TransactionsPage() {
   const router = useRouter();
-  const { userId, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isAuthLoading, isAuthenticated, router]);
+  const { data: transactions = [], isLoading } = useTransactions();
 
-  const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
-    queryKey: ['transactions'],
-    queryFn: async (): Promise<Transaction[]> => {
-      if (!userId) return [];
-      
-      const response = await fetch('/api/transactions');
-      if (!response.ok) {
-        throw new Error('Failed to fetch transactions');
-      }
-      return response.json();
-    },
-    enabled: !!userId,
-  });
+  const deleteMutation = useDeleteTransaction();
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`/api/transactions/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete transaction');
-      }
-      return null;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      toast.success('Transação excluída com sucesso');
-    },
-    onError: () => {
-      toast.error('Erro ao excluir transação');
-    },
-  });
+  const updateMutation = useUpdateTransaction();
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<Omit<Transaction, 'id' | 'createdAt' | 'updatedAt' | 'category'>> & { type?: 'INCOME' | 'EXPENSE' } }) => {
-      const response = await fetch(`/api/transactions/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update transaction');
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      toast.success('Transação atualizada com sucesso');
-    },
-    onError: () => {
-      toast.error('Erro ao atualizar transação');
-    },
-  });
-
-  const handleEdit = (t: Transaction) => {
+  const handleEdit = (t: any) => {
     const newDescription = prompt('Descrição', t.description ?? '');
     if (newDescription === null) return;
     const currentAbs = Math.abs(t.amount);
@@ -124,7 +50,15 @@ export default function TransactionsPage() {
 
   const handleDelete = (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta transação?')) {
-      deleteMutation.mutate(id);
+      deleteMutation.mutate(id, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+          toast.success('Transação excluída com sucesso');
+        },
+        onError: () => {
+          toast.error('Erro ao excluir transação');
+        },
+      });
     }
   };
 
@@ -141,7 +75,7 @@ export default function TransactionsPage() {
 
   return (
     <div className='min-h-screen flex flex-col'>
-      <HeaderBar />
+      <Sidebar />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col space-y-4 mb-8">

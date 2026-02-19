@@ -11,8 +11,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { Mail, Lock, User, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signIn, useSession } from 'next-auth/react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { authService } from '@/lib/services/auth';
+import { useAuth } from '@/context/AuthContext';
 
 const registerSchema = z.object({
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres'),
@@ -35,14 +36,14 @@ export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
-  const { data: session, status } = useSession();
+  const { user } = useAuth();
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (user) {
       router.push(callbackUrl);
     }
-  }, [status, callbackUrl, router]);
+  }, [user, callbackUrl, router]);
 
   const {
     register,
@@ -70,45 +71,20 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      // Call the registration API endpoint
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: data.name,
-          email: data.email,
-          password: data.password,
-        }),
+      const result = await authService.register({
+        name: data.name,
+        email: data.email,
+        password: data.password,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        const apiMessage = (errorData && (errorData.message || errorData.error)) as string | undefined;
-        throw new Error(apiMessage || 'Falha ao criar conta. Tente novamente.');
+      if (!result.ok) {
+        throw new Error(result.error || 'Falha ao criar conta. Tente novamente.');
       }
 
       // Registration successful, now sign in the user
       setSuccess(true);
 
-      // Auto-login after successful registration
-      const result = await signIn('credentials', {
-        redirect: false,
-        email: data.email,
-        password: data.password,
-        callbackUrl,
-      });
-
-      if (result?.error) {
-        // If auto-login fails, redirect to login page with success message
-        router.push(`/login?registered=true`);
-      } else if (result?.url) {
-        // Redirect to the callback URL or dashboard
-        router.push(result.url);
-      } else {
-        router.push(callbackUrl);
-      }
+      // In mocked mode, redirect to login page
+      router.push(`/login?registered=true`);
     } catch (error) {
       console.error('Erro no cadastro:', error);
       const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro ao criar a conta';
