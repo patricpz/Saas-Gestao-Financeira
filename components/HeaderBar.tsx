@@ -15,19 +15,17 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { UserIcon, SettingsIcon, LogOutIcon, ChevronDownIcon, Shield, Menu, X, DollarSign } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { UserProfile } from "@/types/User";
+import { useAuthContext } from "@/context/AuthContext";
 
 export default function HeaderBar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const {  signOut } = useAuth();
-      const { user } = useAuth()  as { user: UserProfile | null };
+    const { logout, user } = useAuthContext();
     
     const router = useRouter();
 
     const handleSignOut = async () => {
         try {
-            await signOut();
+            logout();
             router.push('/login');
         } catch (error) {
             console.error('Erro ao sair:', error);
@@ -65,13 +63,13 @@ export default function HeaderBar() {
                                 {user ? (
                                     <div className="flex items-center gap-2">
                                         <Avatar className="h-8 w-8 mr-2">
-                                            <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email || 'Usuário'} />
+                                            <AvatarImage src={user.image || ''} alt={user.email || 'Usuário'} />
                                             <AvatarFallback>
                                                 {user.email?.charAt(0).toUpperCase() || 'U'}
                                             </AvatarFallback>
                                         </Avatar>
                                         <span className="text-sm font-medium">
-                                            {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuário'}
+                                            {user.name || user.email?.split('@')[0] || 'Usuário'}
                                         </span>
                                         <ChevronDownIcon className="ml-1 h-4 w-4" />
                                     </div>
@@ -92,7 +90,7 @@ export default function HeaderBar() {
                                 <DropdownMenuLabel className="font-normal">
                                     <div className="flex flex-col space-y-1">
                                         <p className="text-sm font-medium leading-none">
-                                            {user.user_metadata?.full_name || 'Usuário'}
+                                            {user.name || 'Usuário'}
                                         </p>
                                         <p className="text-xs leading-none text-muted-foreground">
                                             {user.email}

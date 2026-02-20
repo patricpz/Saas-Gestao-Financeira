@@ -13,7 +13,7 @@ import { Mail, Lock, User, Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { authService } from '@/lib/services/auth';
-import { useAuth } from '@/context/AuthContext';
+import { useAuthContext } from '@/context/AuthContext';
 
 const registerSchema = z.object({
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres'),
@@ -35,15 +35,14 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
-  const { user } = useAuth();
+  const { user } = useAuthContext();
 
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      router.push(callbackUrl);
+      router.push('/dashboard');
     }
-  }, [user, callbackUrl, router]);
+  }, [user, router]);
 
   const {
     register,

@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
-import { UserProfile } from "@/types/User";
+import { useAuthContext } from "@/context/AuthContext";
 
 // Shadcn UI Components
 import { Button } from "@/components/ui/button";
@@ -35,11 +34,11 @@ import {
 export default function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
-    const { signOut, user } = useAuth() as { signOut: () => Promise<void>, user: UserProfile | null };
+    const { logout, user } = useAuthContext();
 
     const handleSignOut = async () => {
         try {
-            await signOut();
+            logout();
             router.push('/login');
         } catch (error) {
             console.error('Erro ao sair:', error);
@@ -102,12 +101,12 @@ export default function Sidebar() {
                     <Button variant="ghost" className="w-full justify-start px-2 h-auto hover:bg-muted">
                         <div className="flex items-center gap-2 w-full">
                             <Avatar className="h-8 w-8">
-                                <AvatarImage src={user?.user_metadata?.avatar_url} />
+                                <AvatarImage src={user?.image || ''} />
                                 <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col items-start text-left flex-1 min-w-0">
                                 <span className="text-sm font-medium truncate w-full">
-                                    {user?.user_metadata?.full_name || 'Usuário'}
+                                    {user?.name || 'Usuário'}
                                 </span>
                                 <span className="text-xs text-muted-foreground truncate w-full">
                                     {user?.email}

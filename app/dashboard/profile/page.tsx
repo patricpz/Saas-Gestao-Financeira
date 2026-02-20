@@ -7,26 +7,17 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Pencil, Save, Camera, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { useAuth } from '@/context/AuthContext';
-import { UserProfile } from '@/types/User';
+import { useAuthContext } from '@/context/AuthContext';
 
 export default function ProfilePage() {
-  const { user } = useAuth() as { user: UserProfile | null };
+  const { user } = useAuthContext();
 
   const userData = {
-    name:
-      user?.user_metadata?.full_name?.trim() ||
-      user?.email?.split('@')[0] ||
-      'Usuário',
+    name: user?.name || 'Usuário',
     email: user?.email || '',
-    phone: user?.phone || '',
-    avatar: user?.user_metadata?.avatar_url || '',
-    joinDate: user?.created_at
-      ? new Date(user.created_at).toLocaleDateString('pt-BR', {
-          month: 'long',
-          year: 'numeric',
-        })
-      : '',
+    phone: '',
+    avatar: user?.image || '',
+    joinDate: ''
   };
   
   // Get user initials for avatar

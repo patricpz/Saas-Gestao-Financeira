@@ -1,38 +1,38 @@
 'use client';
 
-import { useAuth as useAuthContext } from '@/context/AuthContext';
+import { useAuthContext } from '@/context/AuthContext';
 
 export function useAuth() {
-  const { user, session, loading } = useAuthContext();
-  const isAuthenticated = !!user;
+  const { user, token, isLoading, isAuthenticated } = useAuthContext();
 
   return {
-    session,
+    user,
+    token,
     userId: user?.id,
-    accessToken: session?.accessToken || user?.accessToken,
-    isLoading: loading,
+    isLoading,
     isAuthenticated,
   };
 }
 
 export function useRequireAuth() {
-  const { session, userId, accessToken, isLoading, isAuthenticated } = useAuth();
+  const { user, token, isLoading, isAuthenticated } = useAuth();
 
   if (isLoading) {
     return { isLoading: true };
   }
 
-  if (!isAuthenticated || !userId) {
+  if (!isAuthenticated || !user?.id) {
     return { isUnauthorized: true };
   }
 
-  if (!accessToken) {
-    console.warn('No access token found in session');
+  if (!token) {
+    console.warn('No access token found');
   }
 
   return {
-    userId,
-    session,
+    userId: user.id,
+    user,
+    token,
     isLoading: false,
     isUnauthorized: false,
   };

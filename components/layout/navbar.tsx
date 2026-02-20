@@ -6,12 +6,12 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Home, Wallet, BarChart2, Settings, LogIn, UserPlus, User, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
-import { useAuth } from '@/context/AuthContext';
+import { useAuthContext } from '@/context/AuthContext';
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, signOut } = useAuthContext();
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
   const isLoggedIn = !!user;
 
