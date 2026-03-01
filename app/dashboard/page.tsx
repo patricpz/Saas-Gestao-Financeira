@@ -14,6 +14,8 @@ import TransactionModal from '@/components/TransactionModal';
 import Sidebar from '@/components/SideBar';
 import { Input } from '@/components/ui/input';
 import type { Transaction as TransactionType } from '@/lib/types/domain';
+import IncomeExpenseChart from '@/components/IncomeExpenseChart';
+import ExpensesDonutChart from '@/components/ExpensesDonutChart';
 
 
 
@@ -27,14 +29,12 @@ export default function DashboardPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { data: transactionsData } = useTransactions();
 
-  // 🔹 Redirecionar se não autenticado
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
       router.push('/login');
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
-  // 🔹 Cálculos derivados das transações
   const { balance, income, expenses, recentTransactions } = useMemo(() => {
     if (!transactionsData) {
       return { 
@@ -106,6 +106,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
+
+
+        {/* AI Assistant Card dicas da IA */}
         <div className="mt-4 rounded-2xl bg-gradient-to-r from-blue-500 to-blue-700 p-4 text-white shadow-lg shadow-blue-500/20 md:p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-start gap-3">
@@ -168,22 +171,7 @@ export default function DashboardPage() {
               <p className="text-sm text-slate-500">Acompanhamento da lucratividade no ano atual</p>
             </CardHeader>
             <CardContent>
-              <div className="grid h-64 grid-cols-6 items-end gap-5 rounded-xl border border-slate-100 bg-slate-50 p-5">
-                {[42, 56, 68, 48, 82, 64].map((value, index) => (
-                  <div key={index} className="flex h-full flex-col justify-end gap-2">
-                    <div className="w-full rounded-md bg-blue-100" style={{ height: `${Math.min(100, value + 20)}%` }} />
-                    <div className="w-full rounded-md bg-blue-600" style={{ height: `${value}%` }} />
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 flex gap-5 text-sm text-slate-600">
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />Income
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-blue-200" />Expenses
-                </span>
-              </div>
+              <IncomeExpenseChart />
             </CardContent>
           </Card>
 
@@ -192,27 +180,7 @@ export default function DashboardPage() {
               <CardTitle className="text-2xl text-slate-900">Category Breakdown</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="mx-auto mb-6 flex h-44 w-44 items-center justify-center rounded-full bg-[conic-gradient(#1d4ed8_0_20%,#3b82f6_20%_50%,#93c5fd_50%_75%,#dbeafe_75%_100%)]">
-                <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-white text-center">
-                  <span className="text-3xl font-bold text-slate-900">{formatCurrency(expenses)}</span>
-                  <span className="text-xs text-slate-500">Total gasto</span>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-sm text-slate-600">
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-blue-700" />Housing</span>
-                  <span className="font-semibold text-slate-900">$2,100</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-blue-400" />Entertainment</span>
-                  <span className="font-semibold text-slate-900">$840</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-blue-100" />Others</span>
-                  <span className="font-semibold text-slate-900">$2,460</span>
-                </div>
-              </div>
+              <ExpensesDonutChart />
             </CardContent>
           </Card>
         </div>

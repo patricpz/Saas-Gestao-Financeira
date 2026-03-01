@@ -11,14 +11,13 @@ import { useAuthContext } from '@/context/AuthContext';
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, signOut } = useAuthContext();
+  const { user } = useAuthContext();
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
   const isLoggedIn = !!user;
 
   if (isAuthPage) return null;
 
   const handleLogout = async () => {
-    await signOut();
     router.push('/login');
   };
 
